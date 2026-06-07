@@ -1,6 +1,8 @@
 .env
 .garth_tokens/
 *.log
+public/
+.claude/
 __pycache__/
 *.pyc
 *.pyo

@@ -2,3 +2,5 @@ garminconnect==0.3.5
 supabase==2.15.0
 requests==2.32.3
 python-dotenv==1.1.0
+pandas==2.2.3
+plotly==5.24.1
