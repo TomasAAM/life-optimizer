@@ -16,7 +16,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from supabase import create_client
 
-from ingest import garmin, strava
+from ingest import garmin, garmin_activities, strava
 
 # Resolve .env relative to this file's project root so it works
 # whether called as `python -m ingest.run` or via GitHub Actions.
@@ -115,7 +115,11 @@ def main() -> None:
 
     logger.info("Running Garmin ingestion from %s", since)
     try:
-        garmin.ingest(supabase, since=since)
+        # Authenticate once and reuse the client for both wellness and
+        # activity ingestion to avoid a second SSO login.
+        garmin_client = garmin.get_client()
+        garmin.ingest(supabase, since=since, client=garmin_client)
+        garmin_activities.ingest(supabase, garmin_client, since=since)
     except Exception as exc:  # noqa: BLE001
         logger.error("Garmin ingestion failed: %s", exc, exc_info=True)
 

@@ -1,5 +1,6 @@
 .env
 .garth_tokens/
+*.log
 __pycache__/
 *.pyc
 *.pyo

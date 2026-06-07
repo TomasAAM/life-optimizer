@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,35 @@ from garminconnect import Garmin
 from supabase import Client
 
 logger = logging.getLogger(__name__)
+
+
+def _to_iso_ts(value: Any) -> str | None:
+    """Normalize a Garmin timestamp into an ISO-8601 UTC string.
+
+    Garmin returns per-reading timestamps in mixed formats: epoch milliseconds
+    (e.g. heart rate and stress arrays) or already-formatted GMT strings (e.g.
+    some HRV payloads). PostgREST needs an explicit ISO timestamp for
+    ``timestamptz`` columns.
+
+    Parameters
+    ----------
+    value : Any
+        Epoch-milliseconds int/float, or a string timestamp, or ``None``.
+
+    Returns
+    -------
+    str or None
+        ISO-8601 UTC timestamp, or ``None`` if the input is falsy.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value / 1000.0, tz=timezone.utc).isoformat()
+    # Already a string: ensure it has a 'T' separator; assume GMT if no offset.
+    text = str(value).replace(" ", "T")
+    if text.endswith("Z") or "+" in text:
+        return text
+    return text + "+00:00"
 
 # Cache directory for garth OAuth tokens — avoids re-authenticating on every run
 # and prevents hitting Garmin's SSO rate limit.
@@ -25,10 +54,14 @@ _TOKEN_DIR = Path(__file__).parent.parent / ".garth_tokens"
 def get_client() -> Garmin:
     """Authenticate with Garmin Connect, using a cached token when available.
 
-    On first run, performs a full SSO login and saves the resulting token to
-    ``.garth_tokens/`` in the project root. Subsequent calls load the cached
-    token and only fall back to a full re-login if the cached token is expired
-    or missing.
+    Token lookup order:
+    1. ``.garth_tokens/`` in the project root (written by this script after
+       a successful login).
+    2. ``~/.garminconnect`` — the default location used by the Garmin MCP
+       server, so a shared desktop session can bootstrap the pipeline without
+       a fresh SSO login.
+    3. Full SSO login using GARMIN_EMAIL / GARMIN_PASSWORD (writes a new
+       token to ``.garth_tokens/`` for future runs).
 
     Returns
     -------
@@ -37,20 +70,32 @@ def get_client() -> Garmin:
     """
     email = os.environ["GARMIN_EMAIL"]
     password = os.environ["GARMIN_PASSWORD"]
+
+    # Directories to probe for cached tokens, in priority order.
+    _MCP_TOKEN_DIR = Path.home() / ".garminconnect"
+    token_candidates = [_TOKEN_DIR, _MCP_TOKEN_DIR]
+
+    for token_dir in token_candidates:
+        if token_dir.exists():
+            try:
+                client = Garmin(email=email, password=password)
+                client.login(str(token_dir))
+                logger.info("Authenticated with Garmin Connect (token from %s)", token_dir)
+                # Mirror to project-local cache so the MCP dir isn't a hard dependency.
+                if token_dir != _TOKEN_DIR:
+                    _TOKEN_DIR.mkdir(parents=True, exist_ok=True)
+                    client.client.dump(str(_TOKEN_DIR))
+                    logger.info("Token mirrored to %s", _TOKEN_DIR)
+                return client
+            except Exception:  # noqa: BLE001
+                logger.info("Token at %s invalid or expired — trying next source", token_dir)
+
+    logger.info("No valid cached token found — performing full SSO login")
     client = Garmin(email=email, password=password)
-
-    if _TOKEN_DIR.exists():
-        try:
-            client.login(str(_TOKEN_DIR))
-            logger.info("Authenticated with Garmin Connect (cached token)")
-            return client
-        except Exception:  # noqa: BLE001
-            logger.info("Cached token invalid or expired — performing full login")
-
     client.login()
     _TOKEN_DIR.mkdir(parents=True, exist_ok=True)
-    client.garth.dump(str(_TOKEN_DIR))
-    logger.info("Authenticated with Garmin Connect (full login, token saved)")
+    client.client.dump(str(_TOKEN_DIR))
+    logger.info("Authenticated with Garmin Connect (full login, token saved to %s)", _TOKEN_DIR)
     return client
 
 
@@ -142,16 +187,16 @@ def _ingest_hrv(garmin: Garmin, supabase: Client, target_date: date) -> None:
     rows = [
         {
             "date": date_str,
-            "ts": r.get("hrvTime"),
+            "ts": _to_iso_ts(r.get("readingTimeGMT")),
             "hrv_ms": r.get("hrvValue"),
-            "hrv_avg_night": summary.get("lastNight"),
+            "hrv_avg_night": summary.get("lastNightAvg"),
             "hrv_weekly_avg": summary.get("weeklyAvg"),
             "hrv_baseline_low": summary.get("baseline", {}).get("lowUpper"),
             "hrv_baseline_high": summary.get("baseline", {}).get("balancedUpper"),
             "hrv_status": summary.get("status"),
         }
         for r in readings
-        if r.get("hrvTime")
+        if r.get("readingTimeGMT")
     ]
 
     if rows:
@@ -180,7 +225,7 @@ def _ingest_heart_rate(garmin: Garmin, supabase: Client, target_date: date) -> N
 
     values = data.get("heartRateValues") or []
     rows = [
-        {"date": date_str, "ts": v[0], "hr_bpm": v[1]}
+        {"date": date_str, "ts": _to_iso_ts(v[0]), "hr_bpm": v[1]}
         for v in values
         if v[1] is not None
     ]
@@ -211,7 +256,7 @@ def _ingest_stress(garmin: Garmin, supabase: Client, target_date: date) -> None:
 
     values = data.get("stressValuesArray") or []
     rows = [
-        {"date": date_str, "ts": v[0], "stress_level": v[1]}
+        {"date": date_str, "ts": _to_iso_ts(v[0]), "stress_level": v[1]}
         for v in values
     ]
 
@@ -246,7 +291,7 @@ def _ingest_training_readiness(garmin: Garmin, supabase: Client, target_date: da
     rows = [
         {
             "date": date_str,
-            "ts": s.get("timestamp"),
+            "ts": _to_iso_ts(s.get("timestamp")),
             "context": s.get("context"),
             "score": s.get("score"),
             "level": s.get("level"),
@@ -264,7 +309,7 @@ def _ingest_training_readiness(garmin: Garmin, supabase: Client, target_date: da
         logger.info("Upserted %d readiness snapshots for %s", len(rows), date_str)
 
 
-def ingest(supabase: Client, since: date) -> None:
+def ingest(supabase: Client, since: date, client: Garmin | None = None) -> None:
     """Fetch new Garmin data and upsert into Supabase.
 
     Parameters
@@ -273,8 +318,13 @@ def ingest(supabase: Client, since: date) -> None:
         Authenticated Supabase client.
     since : date
         Fetch data from this date onwards.
+    client : Garmin, optional
+        An already-authenticated Garmin client to reuse. If omitted, a new
+        client is created via :func:`get_client`. Passing a shared client
+        avoids a second SSO login when wellness and activity ingestion run
+        in the same pipeline.
     """
-    garmin = get_client()
+    garmin = client or get_client()
     today = date.today()
     dates = _date_range(since, today)
 
