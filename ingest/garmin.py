@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Any
 
 from garminconnect import Garmin
@@ -16,9 +17,18 @@ from supabase import Client
 
 logger = logging.getLogger(__name__)
 
+# Cache directory for garth OAuth tokens — avoids re-authenticating on every run
+# and prevents hitting Garmin's SSO rate limit.
+_TOKEN_DIR = Path(__file__).parent.parent / ".garth_tokens"
+
 
 def get_client() -> Garmin:
-    """Authenticate with Garmin Connect.
+    """Authenticate with Garmin Connect, using a cached token when available.
+
+    On first run, performs a full SSO login and saves the resulting token to
+    ``.garth_tokens/`` in the project root. Subsequent calls load the cached
+    token and only fall back to a full re-login if the cached token is expired
+    or missing.
 
     Returns
     -------
@@ -28,8 +38,19 @@ def get_client() -> Garmin:
     email = os.environ["GARMIN_EMAIL"]
     password = os.environ["GARMIN_PASSWORD"]
     client = Garmin(email=email, password=password)
+
+    if _TOKEN_DIR.exists():
+        try:
+            client.login(str(_TOKEN_DIR))
+            logger.info("Authenticated with Garmin Connect (cached token)")
+            return client
+        except Exception:  # noqa: BLE001
+            logger.info("Cached token invalid or expired — performing full login")
+
     client.login()
-    logger.info("Authenticated with Garmin Connect")
+    _TOKEN_DIR.mkdir(parents=True, exist_ok=True)
+    client.garth.dump(str(_TOKEN_DIR))
+    logger.info("Authenticated with Garmin Connect (full login, token saved)")
     return client
 
 

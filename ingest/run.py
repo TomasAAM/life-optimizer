@@ -11,12 +11,17 @@ import logging
 import os
 from datetime import date, datetime, timedelta, timezone
 
+from pathlib import Path
+
 from dotenv import load_dotenv
 from supabase import create_client
 
 from ingest import garmin, strava
 
-load_dotenv()
+# Resolve .env relative to this file's project root so it works
+# whether called as `python -m ingest.run` or via GitHub Actions.
+_PROJECT_ROOT = Path(__file__).parent.parent
+load_dotenv(_PROJECT_ROOT / ".env", override=True)
 
 logging.basicConfig(
     level=logging.INFO,
