@@ -108,10 +108,16 @@ def main() -> None:
     since_dt = datetime(since.year, since.month, since.day, tzinfo=timezone.utc)
 
     logger.info("Running Strava ingestion from %s", since_dt.date())
-    strava.ingest(supabase, since=since_dt)
+    try:
+        strava.ingest(supabase, since=since_dt)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Strava ingestion failed: %s", exc, exc_info=True)
 
     logger.info("Running Garmin ingestion from %s", since)
-    garmin.ingest(supabase, since=since)
+    try:
+        garmin.ingest(supabase, since=since)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Garmin ingestion failed: %s", exc, exc_info=True)
 
     logger.info("Ingestion pipeline complete")
 
