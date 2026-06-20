@@ -13,6 +13,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from dashboard import zones
 from dashboard.metrics import CTL_WARMUP_DAYS, ReadinessSnapshot
 
 _COLOR_CTL = "#2563eb"   # blue  - fitness
@@ -228,6 +229,8 @@ def render_html(
     fig: go.Figure,
     snapshot: ReadinessSnapshot,
     weekly: pd.DataFrame,
+    zones_fig: go.Figure,
+    pace_fig: go.Figure,
 ) -> str:
     """Assemble the full HTML document.
 
@@ -239,6 +242,12 @@ def render_html(
         Current-state snapshot for the header cards.
     weekly : pandas.DataFrame
         Weekly summary from :func:`dashboard.metrics.weekly_summary`.
+    zones_fig : plotly.graph_objects.Figure
+        The HR-zone comparison band chart from
+        :func:`dashboard.zones.build_zone_comparison_figure`.
+    pace_fig : plotly.graph_objects.Figure
+        The pace-zone comparison band chart from
+        :func:`dashboard.zones.build_pace_comparison_figure`.
 
     Returns
     -------
@@ -246,6 +255,9 @@ def render_html(
         A complete, self-contained HTML document.
     """
     chart_html = fig.to_html(full_html=False, include_plotlyjs="cdn")
+    # plotly.js is already loaded by the chart above; don't ship it twice.
+    zones_chart_html = zones_fig.to_html(full_html=False, include_plotlyjs=False)
+    pace_chart_html = pace_fig.to_html(full_html=False, include_plotlyjs=False)
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     as_of = snapshot.date.strftime("%A, %d %B %Y")
 
@@ -277,19 +289,80 @@ def render_html(
           border-bottom: 1px solid #e2e8f0; }}
   table.weekly th {{ color: #64748b; font-weight: 600; }}
   table.weekly tr:first-child td {{ font-weight: 600; }}
-  footer {{ color: #94a3b8; font-size: 0.8rem; margin-top: 28px; }}
+  /* tabs */
+  .tabs {{ display: flex; gap: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 20px; }}
+  .tab-btn {{ background: none; border: none; padding: 10px 16px; font-size: 0.95rem;
+          color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; }}
+  .tab-btn:hover {{ color: #0f172a; }}
+  .tab-btn.active {{ color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }}
+  .tab-panel {{ display: none; }}
+  .tab-panel.active {{ display: block; }}
+  /* zone comparison table */
+  table.zones {{ width: 100%; border-collapse: collapse; font-size: 0.92rem; }}
+  table.zones th, table.zones td {{ text-align: center; padding: 8px 10px;
+          border-bottom: 1px solid #e2e8f0; }}
+  table.zones th:first-child, table.zones td:first-child {{ text-align: left; }}
+  table.zones th {{ color: #64748b; font-weight: 600; }}
+  table.zones .muted {{ color: #94a3b8; font-size: 0.85rem; }}
+  .callout {{ background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+          padding: 12px 16px; margin: 0 0 18px; font-size: 0.95rem; color: #1e3a8a; }}
+  .note {{ color: #475569; font-size: 0.88rem; line-height: 1.5; }}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Training Dashboard</h1>
   <div class="as-of">As of {as_of}</div>
-  {_snapshot_cards(snapshot)}
-  <div class="panel">{chart_html}</div>
-  <h2>Weekly summary</h2>
-  <div class="panel">{_weekly_table(weekly)}</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="training">Training load</button>
+    <button class="tab-btn" data-tab="zones">Zones</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-training">
+    {_snapshot_cards(snapshot)}
+    <div class="panel">{chart_html}</div>
+    <h2>Weekly summary</h2>
+    <div class="panel">{_weekly_table(weekly)}</div>
+  </div>
+
+  <div class="tab-panel" id="tab-zones">
+    <h2>Heart-rate zones: lab vs platforms</h2>
+    <div class="callout">{zones.example_hr_callout(165)}</div>
+    <div class="panel">{zones_chart_html}</div>
+    <div class="panel">{zones.zone_table_html()}</div>
+    <p class="note">Your <strong>Lab</strong> zones are anchored on the measured
+    anaerobic threshold (LT2 ≈ {zones.LAB_LT2_HR} bpm) from the 2026-06-19 lactate
+    test. <strong>Garmin</strong> and <strong>Strava</strong> anchor on an assumed
+    maximum heart rate (~200 and ~190), not threshold — so their hard zones sit
+    well above your real ones. Garmin even stores a threshold HR of 175 but uses
+    %max-HR for the zones. Net effect: a heart rate the lab calls threshold/VO2max
+    still reads as Z3-Z4 on the platforms.</p>
+
+    <h2 style="margin-top:28px">Pace zones: lab vs Strava</h2>
+    <div class="callout">{zones.example_pace_callout("4:30")}</div>
+    <div class="panel">{pace_chart_html}</div>
+    <div class="panel">{zones.pace_table_html()}</div>
+    <p class="note">Lab pace zones come from the same test (threshold pace
+    ≈ {zones.format_pace(zones.LAB_LT2_PACE_S)}/km). <strong>Strava</strong> derives
+    its pace zones from an <em>estimated</em> 5 km time (19:29), which runs
+    optimistic, so its zones sit faster than the measured ones.
+    <strong>Garmin</strong> does not publish running pace zones for this athlete.</p>
+  </div>
+
   <footer>Generated {generated} · Garmin training load + HRV · TSB bands follow
   TrainingPeaks conventions. CTL warm-up window shaded; treat early TSB with caution.</footer>
 </div>
+<script>
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {{
+    btn.addEventListener('click', function () {{
+      document.querySelectorAll('.tab-btn').forEach(function (b) {{ b.classList.remove('active'); }});
+      document.querySelectorAll('.tab-panel').forEach(function (p) {{ p.classList.remove('active'); }});
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      window.dispatchEvent(new Event('resize'));  // let Plotly size the hidden chart
+    }});
+  }});
+</script>
 </body>
 </html>"""
