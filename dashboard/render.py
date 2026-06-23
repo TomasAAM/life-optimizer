@@ -7,13 +7,17 @@ summary table. Plotly.js is loaded from a CDN to keep the committed file small.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta, timezone
+from html import escape
 
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from dashboard.metrics import CTL_WARMUP_DAYS, ReadinessSnapshot
+from plan import phase as plan_phase
+from plan.pace import seconds_to_pace
 
 _COLOR_CTL = "#2563eb"   # blue  - fitness
 _COLOR_ATL = "#f97316"   # orange - fatigue
@@ -21,6 +25,34 @@ _COLOR_TSB = "#16a34a"   # green - form
 _COLOR_LOAD = "#cbd5e1"  # grey  - daily load bars
 _COLOR_HRV = "#7c3aed"   # violet - nightly HRV
 _COLOR_BAND = "rgba(124, 58, 237, 0.15)"  # HRV baseline band fill
+
+# Colors for the periodization strip and the session status badges.
+_PHASE_COLOR = {
+    "base": "#0ea5e9", "build": "#2563eb", "peak": "#f97316",
+    "taper": "#16a34a", "off": "#94a3b8",
+}
+_STATUS_COLOR = {
+    "done": "#16a34a", "missed": "#dc2626", "upcoming": "#94a3b8", "rest": "#cbd5e1",
+}
+
+
+@dataclass(frozen=True)
+class PlanView:
+    """View model for the training-plan section.
+
+    Parameters
+    ----------
+    week : dict or None
+        Latest ``training_plan_weeks`` row, or ``None`` when no plan exists yet.
+    sessions : pandas.DataFrame
+        Planned sessions for that week, with a ``status`` column.
+    zones : pandas.DataFrame
+        Lactate-anchored training zones.
+    """
+
+    week: dict | None
+    sessions: pd.DataFrame
+    zones: pd.DataFrame
 
 
 def build_figure(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> go.Figure:
@@ -224,10 +256,155 @@ def _weekly_table(weekly: pd.DataFrame) -> str:
     return f"<table class='weekly'>{header}{body}</table>"
 
 
+def _clean_int(value) -> int | None:
+    """Coerce a possibly-NaN/None numeric to ``int`` or ``None``."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    return int(value)
+
+
+def _phase_strip(race_date: date, current_week_start: date) -> str:
+    """Render a colored week-by-week periodization strip up to the race."""
+    cells = []
+    week = current_week_start
+    guard = 0
+    while week <= race_date and guard < 40:
+        phase_name, _ = plan_phase.phase_for_week(week, race_date)
+        color = _PHASE_COLOR.get(phase_name, "#94a3b8")
+        border = "2px solid #0f172a" if week == current_week_start else "1px solid #e2e8f0"
+        cells.append(
+            f'<div class="phase-cell" style="border:{border}">'
+            f'<div class="phase-dot" style="background:{color}"></div>'
+            f'<div class="phase-wk">{week.strftime("%d %b")}</div>'
+            f'<div class="phase-name">{phase_name}</div></div>'
+        )
+        week += timedelta(days=7)
+        guard += 1
+    return f'<div class="phase-strip">{"".join(cells)}</div>'
+
+
+def _zones_table(zones: pd.DataFrame) -> str:
+    """Render the lactate-anchored zone reference as an HTML table."""
+    if zones.empty:
+        return ""
+    rows = []
+    for z in zones.sort_values("zone_index").itertuples():
+        hr_low, hr_high = _clean_int(z.hr_low), _clean_int(z.hr_high)
+        hr = f"{hr_low or '–'}–{hr_high or '–'} bpm"
+        pace = (
+            f"{seconds_to_pace(_clean_int(z.pace_low_s_per_km))}–"
+            f"{seconds_to_pace(_clean_int(z.pace_high_s_per_km))} /km"
+        )
+        rows.append(
+            f"<tr><td>Z{z.zone_index} {escape(z.zone_name)}</td>"
+            f"<td>{hr}</td><td>{pace}</td></tr>"
+        )
+    header = "<tr><th>Zone</th><th>Heart rate</th><th>Pace</th></tr>"
+    return f"<table class='weekly'>{header}{''.join(rows)}</table>"
+
+
+def _plan_table(sessions: pd.DataFrame) -> str:
+    """Render the week's prescribed sessions as an HTML table."""
+    if sessions.empty:
+        return "<p>No sessions for this week.</p>"
+
+    header = (
+        "<tr><th>Day</th><th>Session</th><th>Zone</th>"
+        "<th>Intensity</th><th>Status</th></tr>"
+    )
+    body = []
+    for r in sessions.sort_values("session_date").itertuples():
+        day = pd.to_datetime(r.session_date).strftime("%a %d")
+        presc = r.prescription if isinstance(r.prescription, dict) else {}
+        detail = escape(str(presc.get("detail", "") or ""))
+        dist, dur = presc.get("distance_m"), presc.get("duration_min")
+        meta = []
+        if dist:
+            meta.append(f"{dist / 1000:.1f} km")
+        if dur:
+            meta.append(f"{dur} min")
+        meta_html = f"<div class='meta'>{' · '.join(meta)}</div>" if meta else ""
+        focus = getattr(r, "hyrox_focus", None)
+        focus_html = f"<span class='focus'>{escape(str(focus))}</span>" if focus else ""
+        purpose = escape(str(r.purpose or ""))
+        session_cell = (
+            f"<b>{escape(str(r.title or ''))}</b>{focus_html}"
+            f"<div class='presc'>{detail}</div>{meta_html}"
+            f"<div class='purpose'>{purpose}</div>"
+        )
+        color = _STATUS_COLOR.get(r.status, "#94a3b8")
+        badge = f"<span class='badge' style='background:{color}'>{r.status}</span>"
+        body.append(
+            f"<tr><td class='day'>{day}</td><td>{session_cell}</td>"
+            f"<td>{escape(str(r.zone or '—'))}</td>"
+            f"<td>{escape(str(r.intensity or ''))}</td><td>{badge}</td></tr>"
+        )
+    return f"<table class='plan'>{header}{''.join(body)}</table>"
+
+
+def _plan_section(plan: PlanView) -> str:
+    """Render the full training-plan section (cards, strip, table, zones)."""
+    if plan is None or plan.week is None:
+        return (
+            "<h2>Training plan</h2><div class='panel'><p>No plan generated yet — "
+            "run <code>python -m plan.generate</code>.</p></div>"
+        )
+
+    week = plan.week
+    race_date = date.fromisoformat(week["race_date"])
+    week_start = date.fromisoformat(week["week_start"])
+    days_to = (race_date - date.today()).days
+
+    cards = [
+        ("Target race", week["target_race"].upper(), race_date.strftime("%d %b %Y")),
+        ("Countdown", f"{days_to}d", "until race day"),
+        ("Phase", week["phase"].title(), f"{week['weeks_to_race']} weeks to race"),
+        (
+            "Load target",
+            f"{int(week['load_target_low'])}–{int(week['load_target_high'])}",
+            "weekly load band",
+        ),
+    ]
+    card_html = "".join(
+        f'<div class="card"><div class="card-label">{label}</div>'
+        f'<div class="card-value">{value}</div><div class="card-sub">{sub}</div></div>'
+        for label, value, sub in cards
+    )
+
+    lt1_caveat = ""
+    if not plan.zones.empty and _clean_int(plan.zones.iloc[0].get("lt1_hr")) is None:
+        lt1_caveat = (
+            " LT1 was not captured by the lab test, so the Recovery/Endurance "
+            "boundary is approximate."
+        )
+
+    rationale = escape(str(week.get("rationale") or ""))
+    model = escape(str(week.get("model") or ""))
+
+    return f"""<h2>Training plan</h2>
+  <div class="cards">{card_html}</div>
+  <div class="panel">
+    <div class="section-label">Periodization</div>
+    {_phase_strip(race_date, week_start)}
+  </div>
+  <div class="panel">
+    <div class="section-label">Week of {week_start.strftime('%d %b %Y')}</div>
+    {_plan_table(plan.sessions)}
+    <p class="rationale"><b>Coach's note:</b> {rationale}</p>
+  </div>
+  <div class="panel">
+    <div class="section-label">Lactate-anchored zones</div>
+    {_zones_table(plan.zones)}
+    <p class="zone-note">Anchored on LT2 from the {escape(str(plan.zones.iloc[0]['source_test_date']))
+      if not plan.zones.empty else 'n/a'} step test.{lt1_caveat} Generated by {model}.</p>
+  </div>"""
+
+
 def render_html(
     fig: go.Figure,
     snapshot: ReadinessSnapshot,
     weekly: pd.DataFrame,
+    plan: PlanView | None = None,
 ) -> str:
     """Assemble the full HTML document.
 
@@ -239,6 +416,8 @@ def render_html(
         Current-state snapshot for the header cards.
     weekly : pandas.DataFrame
         Weekly summary from :func:`dashboard.metrics.weekly_summary`.
+    plan : PlanView or None, optional
+        Training-plan view model; when ``None`` the section is omitted.
 
     Returns
     -------
@@ -248,6 +427,7 @@ def render_html(
     chart_html = fig.to_html(full_html=False, include_plotlyjs="cdn")
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     as_of = snapshot.date.strftime("%A, %d %B %Y")
+    plan_html = _plan_section(plan) if plan is not None else ""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -277,6 +457,28 @@ def render_html(
           border-bottom: 1px solid #e2e8f0; }}
   table.weekly th {{ color: #64748b; font-weight: 600; }}
   table.weekly tr:first-child td {{ font-weight: 600; }}
+  .section-label {{ font-size: 0.8rem; color: #64748b; font-weight: 600;
+          text-transform: uppercase; letter-spacing: 0.03em; margin: 4px 6px 10px; }}
+  .phase-strip {{ display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 8px; }}
+  .phase-cell {{ flex: 0 0 auto; min-width: 78px; border-radius: 10px; padding: 8px 10px;
+          text-align: center; background: #fff; }}
+  .phase-dot {{ width: 100%; height: 5px; border-radius: 3px; margin-bottom: 6px; }}
+  .phase-wk {{ font-size: 0.78rem; font-weight: 600; }}
+  .phase-name {{ font-size: 0.72rem; color: #64748b; text-transform: capitalize; }}
+  table.plan {{ width: 100%; border-collapse: collapse; font-size: 0.92rem; }}
+  table.plan th, table.plan td {{ text-align: left; padding: 10px;
+          border-bottom: 1px solid #e2e8f0; vertical-align: top; }}
+  table.plan th {{ color: #64748b; font-weight: 600; }}
+  table.plan td.day {{ white-space: nowrap; color: #475569; font-weight: 600; }}
+  .presc {{ font-size: 0.86rem; color: #334155; margin-top: 3px; }}
+  .purpose {{ font-size: 0.8rem; color: #64748b; margin-top: 3px; font-style: italic; }}
+  .meta {{ font-size: 0.78rem; color: #94a3b8; margin-top: 2px; }}
+  .focus {{ font-size: 0.7rem; background: #eef2ff; color: #4338ca; border-radius: 6px;
+          padding: 1px 6px; margin-left: 6px; }}
+  .badge {{ color: #fff; font-size: 0.72rem; font-weight: 600; border-radius: 6px;
+          padding: 2px 8px; text-transform: capitalize; }}
+  .rationale {{ font-size: 0.86rem; color: #334155; margin: 14px 4px 4px; }}
+  .zone-note {{ font-size: 0.78rem; color: #94a3b8; margin: 10px 4px 2px; }}
   footer {{ color: #94a3b8; font-size: 0.8rem; margin-top: 28px; }}
 </style>
 </head>
@@ -286,6 +488,7 @@ def render_html(
   <div class="as-of">As of {as_of}</div>
   {_snapshot_cards(snapshot)}
   <div class="panel">{chart_html}</div>
+  {plan_html}
   <h2>Weekly summary</h2>
   <div class="panel">{_weekly_table(weekly)}</div>
   <footer>Generated {generated} · Garmin training load + HRV · TSB bands follow

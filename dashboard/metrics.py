@@ -231,6 +231,52 @@ def weekly_summary(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> pd.Da
     return pd.DataFrame(rows).iloc[::-1].reset_index(drop=True)
 
 
+def compute_adherence(planned: pd.DataFrame, activities: pd.DataFrame) -> pd.DataFrame:
+    """Mark each prescribed session done or pending against actual activities.
+
+    A non-rest session is considered done if at least one Garmin activity was
+    recorded on its date. Rest days are always "done". Past dates with no
+    matching activity are "missed"; future dates are "upcoming".
+
+    Parameters
+    ----------
+    planned : pandas.DataFrame
+        Output of :func:`dashboard.query.fetch_planned_sessions`.
+    activities : pandas.DataFrame
+        Output of :func:`dashboard.query.fetch_activities`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        ``planned`` with an added ``status`` column
+        (done / missed / upcoming / rest).
+    """
+    if planned.empty:
+        return planned
+
+    done_dates: set = set()
+    if not activities.empty:
+        done_dates = set(
+            pd.to_datetime(activities["start_time_local"]).dt.normalize().dt.date
+        )
+
+    today = pd.Timestamp.now().normalize().date()
+    out = planned.copy()
+    session_dates = pd.to_datetime(out["session_date"]).dt.date
+
+    def _status(row_date, session_type: str) -> str:
+        if session_type == "rest":
+            return "rest"
+        if row_date in done_dates:
+            return "done"
+        return "missed" if row_date < today else "upcoming"
+
+    out["status"] = [
+        _status(d, t) for d, t in zip(session_dates, out["session_type"])
+    ]
+    return out
+
+
 def latest_snapshot(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> ReadinessSnapshot:
     """Build the current-state snapshot for the dashboard header.
 
