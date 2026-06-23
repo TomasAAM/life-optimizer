@@ -25,6 +25,35 @@ logger = logging.getLogger(__name__)
 _OUTPUT_PATH = _PROJECT_ROOT / "public" / "index.html"
 
 
+def _build_plan_view(supabase, activities) -> render.PlanView:
+    """Assemble the training-plan view model from the latest generated week.
+
+    Reads the most recent plan week, its sessions (scored for adherence against
+    actual activities), and the lactate zones. Degrades gracefully to an empty
+    view when no plan has been generated yet.
+
+    Parameters
+    ----------
+    supabase : supabase.Client
+        Authenticated Supabase client.
+    activities : pandas.DataFrame
+        Activities used to score session adherence.
+
+    Returns
+    -------
+    render.PlanView
+        View model consumed by :func:`dashboard.render.render_html`.
+    """
+    zones = query.fetch_training_zones(supabase)
+    week = query.fetch_latest_plan_week(supabase)
+    if week is None:
+        return render.PlanView(week=None, sessions=query.fetch_planned_sessions(supabase, ""), zones=zones)
+
+    sessions = query.fetch_planned_sessions(supabase, week["week_start"])
+    sessions = metrics.compute_adherence(sessions, activities)
+    return render.PlanView(week=week, sessions=sessions, zones=zones)
+
+
 def main() -> None:
     """Build the dashboard HTML and write it to ``public/index.html``."""
     logger.info("Building dashboard")
@@ -44,7 +73,10 @@ def main() -> None:
     weekly = metrics.weekly_summary(load_series, hrv_series)
     snapshot = metrics.latest_snapshot(load_series, hrv_series)
 
+    plan_view = _build_plan_view(supabase, activities)
+
     fig = render.build_figure(load_series, hrv_series)
+    html = render.render_html(fig, snapshot, weekly, plan=plan_view)
     zones_fig = zones.build_zone_comparison_figure()
     pace_fig = zones.build_pace_comparison_figure()
     html = render.render_html(fig, snapshot, weekly, zones_fig, pace_fig)

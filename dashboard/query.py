@@ -102,3 +102,78 @@ def fetch_hrv(supabase: Client) -> pd.DataFrame:
         "date,hrv_avg_night,hrv_weekly_avg,hrv_baseline_low,hrv_baseline_high,hrv_status",
         "date",
     )
+
+
+def fetch_readiness(supabase: Client) -> pd.DataFrame:
+    """Fetch Garmin training-readiness rows for auto-regulation.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns: date, ts, score, level, recovery_time_h, acute_load.
+    """
+    return _fetch_all(
+        supabase,
+        "garmin_training_readiness",
+        "date,ts,score,level,recovery_time_h,acute_load",
+        "date",
+    )
+
+
+def fetch_training_zones(supabase: Client) -> pd.DataFrame:
+    """Fetch the lactate-anchored training zones.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per zone (Recovery..VO2max) with HR/pace bounds and the LT
+        anchors, ordered by ``zone_index``.
+    """
+    result = supabase.table("training_zones").select("*").order("zone_index").execute()
+    rows = result.data or []
+    return pd.DataFrame(rows)
+
+
+def fetch_latest_plan_week(supabase: Client) -> dict | None:
+    """Fetch the most recently generated plan-week header.
+
+    Returns
+    -------
+    dict or None
+        The latest ``training_plan_weeks`` row, or ``None`` if no plan exists.
+    """
+    result = (
+        supabase.table("training_plan_weeks")
+        .select("*")
+        .order("week_start", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = result.data or []
+    return rows[0] if rows else None
+
+
+def fetch_planned_sessions(supabase: Client, week_start: str) -> pd.DataFrame:
+    """Fetch the prescribed sessions for a given plan week.
+
+    Parameters
+    ----------
+    supabase : supabase.Client
+        Authenticated Supabase client.
+    week_start : str
+        ISO date of the plan week's Monday.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Sessions ordered by ``session_date``.
+    """
+    result = (
+        supabase.table("planned_sessions")
+        .select("*")
+        .eq("week_start", week_start)
+        .order("session_date")
+        .execute()
+    )
+    rows = result.data or []
+    return pd.DataFrame(rows)
