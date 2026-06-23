@@ -50,6 +50,7 @@ def _to_rows(week: PlannedWeek, week_start: date) -> list[dict[str, Any]]:
                     "detail": s.prescription,
                     "duration_min": s.duration_min,
                     "distance_m": s.distance_m,
+                    "steps": [step.model_dump() for step in s.steps],
                 },
                 "purpose": s.purpose,
                 "hyrox_focus": s.hyrox_focus,
