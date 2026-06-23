@@ -11,7 +11,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from dashboard import metrics, query, render
+from dashboard import metrics, query, render, zones
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 load_dotenv(_PROJECT_ROOT / ".env", override=True)
@@ -77,6 +77,9 @@ def main() -> None:
 
     fig = render.build_figure(load_series, hrv_series)
     html = render.render_html(fig, snapshot, weekly, plan=plan_view)
+    zones_fig = zones.build_zone_comparison_figure()
+    pace_fig = zones.build_pace_comparison_figure()
+    html = render.render_html(fig, snapshot, weekly, zones_fig, pace_fig)
 
     _OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     _OUTPUT_PATH.write_text(html, encoding="utf-8")
