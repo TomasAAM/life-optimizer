@@ -405,9 +405,9 @@ def render_html(
     fig: go.Figure,
     snapshot: ReadinessSnapshot,
     weekly: pd.DataFrame,
-    plan: PlanView | None = None,
     zones_fig: go.Figure,
     pace_fig: go.Figure,
+    plan: PlanView | None = None,
 ) -> str:
     """Assemble the full HTML document.
 
@@ -516,14 +516,10 @@ def render_html(
 <div class="wrap">
   <h1>Training Dashboard</h1>
   <div class="as-of">As of {as_of}</div>
-  {_snapshot_cards(snapshot)}
-  <div class="panel">{chart_html}</div>
-  {plan_html}
-  <h2>Weekly summary</h2>
-  <div class="panel">{_weekly_table(weekly)}</div>
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="training">Training load</button>
+    <button class="tab-btn" data-tab="plan">Training plan</button>
     <button class="tab-btn" data-tab="zones">Zones</button>
   </div>
 
@@ -532,6 +528,10 @@ def render_html(
     <div class="panel">{chart_html}</div>
     <h2>Weekly summary</h2>
     <div class="panel">{_weekly_table(weekly)}</div>
+  </div>
+
+  <div class="tab-panel" id="tab-plan">
+    {plan_html}
   </div>
 
   <div class="tab-panel" id="tab-zones">

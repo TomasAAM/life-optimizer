@@ -44,14 +44,16 @@ def _build_plan_view(supabase, activities) -> render.PlanView:
     render.PlanView
         View model consumed by :func:`dashboard.render.render_html`.
     """
-    zones = query.fetch_training_zones(supabase)
+    zones_df = query.fetch_training_zones(supabase)
     week = query.fetch_latest_plan_week(supabase)
     if week is None:
-        return render.PlanView(week=None, sessions=query.fetch_planned_sessions(supabase, ""), zones=zones)
+        return render.PlanView(
+            week=None, sessions=query.fetch_planned_sessions(supabase, ""), zones=zones_df
+        )
 
     sessions = query.fetch_planned_sessions(supabase, week["week_start"])
     sessions = metrics.compute_adherence(sessions, activities)
-    return render.PlanView(week=week, sessions=sessions, zones=zones)
+    return render.PlanView(week=week, sessions=sessions, zones=zones_df)
 
 
 def main() -> None:
@@ -76,10 +78,9 @@ def main() -> None:
     plan_view = _build_plan_view(supabase, activities)
 
     fig = render.build_figure(load_series, hrv_series)
-    html = render.render_html(fig, snapshot, weekly, plan=plan_view)
     zones_fig = zones.build_zone_comparison_figure()
     pace_fig = zones.build_pace_comparison_figure()
-    html = render.render_html(fig, snapshot, weekly, zones_fig, pace_fig)
+    html = render.render_html(fig, snapshot, weekly, zones_fig, pace_fig, plan=plan_view)
 
     _OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     _OUTPUT_PATH.write_text(html, encoding="utf-8")
