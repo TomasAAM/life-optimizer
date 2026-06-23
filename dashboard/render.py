@@ -35,6 +35,16 @@ _PHASE_COLOR = {
 _STATUS_COLOR = {
     "done": "#16a34a", "missed": "#dc2626", "upcoming": "#94a3b8", "rest": "#cbd5e1",
 }
+# Zone accent dot (easiest → hardest) and intensity pill (bg, text).
+_ZONE_DOT = {
+    "Recovery": "#639922", "Endurance": "#97C459", "Tempo": "#EF9F27",
+    "Threshold": "#D85A30", "VO2max": "#E24B4A", "mixed": "#64748b",
+}
+_INTENSITY_BADGE = {
+    "hard": ("#fef2f2", "#dc2626"),
+    "moderate": ("#fffbeb", "#b45309"),
+    "easy": ("#f0fdf4", "#16a34a"),
+}
 
 
 @dataclass(frozen=True)
@@ -304,43 +314,67 @@ def _zones_table(zones: pd.DataFrame) -> str:
     return f"<table class='weekly'>{header}{''.join(rows)}</table>"
 
 
-def _plan_table(sessions: pd.DataFrame) -> str:
-    """Render the week's prescribed sessions as an HTML table."""
+def _session_steps_html(presc: dict) -> str:
+    """Render a session's body: structured steps, or the detail text as a fallback."""
+    steps = presc.get("steps") or []
+    if steps:
+        return "".join(
+            f"<div class='sess-step'><span class='sk'>{escape(str(s.get('label', '')))}</span>"
+            f"<span class='sv'>{escape(str(s.get('detail', '')))}</span></div>"
+            for s in steps
+        )
+    detail = escape(str(presc.get("detail", "") or ""))
+    return f"<div class='sess-step'><span class='sk'>Session</span><span class='sv'>{detail}</span></div>"
+
+
+def _plan_list(sessions: pd.DataFrame) -> str:
+    """Render the week's sessions as an expandable list of structured cards.
+
+    Each row is scannable (zone dot, title, day/zone/distance, intensity); clicking
+    it expands the structured breakdown (warm-up / main set / cool-down or rounds)
+    plus the session purpose. Falls back to the free-text prescription when a
+    session has no structured ``steps``.
+    """
     if sessions.empty:
         return "<p>No sessions for this week.</p>"
 
-    header = (
-        "<tr><th>Day</th><th>Session</th><th>Zone</th>"
-        "<th>Intensity</th><th>Status</th></tr>"
-    )
-    body = []
-    for r in sessions.sort_values("session_date").itertuples():
-        day = pd.to_datetime(r.session_date).strftime("%a %d")
+    items = []
+    for i, r in enumerate(sessions.sort_values("session_date").itertuples()):
+        day = pd.to_datetime(r.session_date).strftime("%a %d %b")
         presc = r.prescription if isinstance(r.prescription, dict) else {}
-        detail = escape(str(presc.get("detail", "") or ""))
         dist, dur = presc.get("distance_m"), presc.get("duration_min")
-        meta = []
+
+        meta = [day]
+        if r.zone:
+            meta.append(escape(str(r.zone)))
         if dist:
             meta.append(f"{dist / 1000:.1f} km")
         if dur:
             meta.append(f"{dur} min")
-        meta_html = f"<div class='meta'>{' · '.join(meta)}</div>" if meta else ""
+
         focus = getattr(r, "hyrox_focus", None)
         focus_html = f"<span class='focus'>{escape(str(focus))}</span>" if focus else ""
-        purpose = escape(str(r.purpose or ""))
-        session_cell = (
-            f"<b>{escape(str(r.title or ''))}</b>{focus_html}"
-            f"<div class='presc'>{detail}</div>{meta_html}"
-            f"<div class='purpose'>{purpose}</div>"
+        dot = _ZONE_DOT.get(r.zone, "#94a3b8")
+        bg, fg = _INTENSITY_BADGE.get(r.intensity, ("#f1f5f9", "#475569"))
+        status = getattr(r, "status", "upcoming")
+        status_color = _STATUS_COLOR.get(status, "#cbd5e1")
+
+        items.append(
+            f"<div class='sess'>"
+            f"<div class='sess-row' data-sess='{i}'>"
+            f"<span class='zdot' style='background:{dot}'></span>"
+            f"<div class='sess-main'>"
+            f"<div class='sess-title'>{escape(str(r.title or ''))}{focus_html}</div>"
+            f"<div class='sess-meta'>{' · '.join(meta)}</div></div>"
+            f"<span class='ibadge' style='background:{bg};color:{fg}'>{escape(str(r.intensity or ''))}</span>"
+            f"<span class='sdot' style='background:{status_color}' title='{status}'></span>"
+            f"<span class='chev'>&#9662;</span>"
+            f"</div>"
+            f"<div class='sess-body' id='psess{i}'>{_session_steps_html(presc)}"
+            f"<div class='sess-purpose'>{escape(str(r.purpose or ''))}</div></div>"
+            f"</div>"
         )
-        color = _STATUS_COLOR.get(r.status, "#94a3b8")
-        badge = f"<span class='badge' style='background:{color}'>{r.status}</span>"
-        body.append(
-            f"<tr><td class='day'>{day}</td><td>{session_cell}</td>"
-            f"<td>{escape(str(r.zone or '—'))}</td>"
-            f"<td>{escape(str(r.intensity or ''))}</td><td>{badge}</td></tr>"
-        )
-    return f"<table class='plan'>{header}{''.join(body)}</table>"
+    return f"<div class='sess-list'>{''.join(items)}</div>"
 
 
 def _plan_section(plan: PlanView) -> str:
@@ -390,7 +424,8 @@ def _plan_section(plan: PlanView) -> str:
   </div>
   <div class="panel">
     <div class="section-label">Week of {week_start.strftime('%d %b %Y')}</div>
-    {_plan_table(plan.sessions)}
+    <p class="plan-hint">Click a session to see the full breakdown.</p>
+    {_plan_list(plan.sessions)}
     <p class="rationale"><b>Coach's note:</b> {rationale}</p>
   </div>
   <div class="panel">
@@ -477,14 +512,29 @@ def render_html(
   .phase-dot {{ width: 100%; height: 5px; border-radius: 3px; margin-bottom: 6px; }}
   .phase-wk {{ font-size: 0.78rem; font-weight: 600; }}
   .phase-name {{ font-size: 0.72rem; color: #64748b; text-transform: capitalize; }}
-  table.plan {{ width: 100%; border-collapse: collapse; font-size: 0.92rem; }}
-  table.plan th, table.plan td {{ text-align: left; padding: 10px;
-          border-bottom: 1px solid #e2e8f0; vertical-align: top; }}
-  table.plan th {{ color: #64748b; font-weight: 600; }}
-  table.plan td.day {{ white-space: nowrap; color: #475569; font-weight: 600; }}
-  .presc {{ font-size: 0.86rem; color: #334155; margin-top: 3px; }}
-  .purpose {{ font-size: 0.8rem; color: #64748b; margin-top: 3px; font-style: italic; }}
-  .meta {{ font-size: 0.78rem; color: #94a3b8; margin-top: 2px; }}
+  .plan-hint {{ font-size: 0.78rem; color: #94a3b8; margin: -2px 6px 12px; }}
+  .sess-list {{ display: flex; flex-direction: column; gap: 8px; }}
+  .sess {{ border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }}
+  .sess-row {{ display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+          cursor: pointer; background: #fff; }}
+  .sess-row:hover {{ background: #f8fafc; }}
+  .zdot {{ width: 10px; height: 10px; border-radius: 50%; flex: none; }}
+  .sess-main {{ flex: 1; min-width: 0; }}
+  .sess-title {{ font-size: 0.95rem; font-weight: 600; }}
+  .sess-meta {{ font-size: 0.8rem; color: #64748b; margin-top: 2px; }}
+  .ibadge {{ font-size: 0.72rem; font-weight: 600; border-radius: 6px; padding: 2px 8px;
+          text-transform: capitalize; white-space: nowrap; }}
+  .sdot {{ width: 8px; height: 8px; border-radius: 50%; flex: none; }}
+  .chev {{ color: #94a3b8; font-size: 0.7rem; transition: transform 0.15s; }}
+  .sess-row.open .chev {{ transform: rotate(180deg); }}
+  .sess-body {{ display: none; padding: 4px 14px 14px 36px; background: #fff;
+          border-top: 1px solid #f1f5f9; }}
+  .sess-body.open {{ display: block; }}
+  .sess-step {{ display: flex; gap: 10px; align-items: baseline; padding: 5px 0; }}
+  .sess-step .sk {{ min-width: 84px; font-size: 0.78rem; color: #64748b; }}
+  .sess-step .sv {{ font-size: 0.88rem; color: #334155; line-height: 1.5; }}
+  .sess-purpose {{ font-size: 0.8rem; color: #64748b; font-style: italic;
+          margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9; }}
   .focus {{ font-size: 0.7rem; background: #eef2ff; color: #4338ca; border-radius: 6px;
           padding: 1px 6px; margin-left: 6px; }}
   .badge {{ color: #fff; font-size: 0.72rem; font-weight: 600; border-radius: 6px;
@@ -569,6 +619,12 @@ def render_html(
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
       window.dispatchEvent(new Event('resize'));  // let Plotly size the hidden chart
+    }});
+  }});
+  document.querySelectorAll('.sess-row').forEach(function (row) {{
+    row.addEventListener('click', function () {{
+      row.classList.toggle('open');
+      document.getElementById('psess' + row.dataset.sess).classList.toggle('open');
     }});
   }});
 </script>

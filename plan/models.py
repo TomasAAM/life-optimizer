@@ -20,6 +20,13 @@ SessionType = Literal["run", "strength", "functional", "sim", "rest", "cross"]
 Intensity = Literal["easy", "moderate", "hard"]
 
 
+class Step(BaseModel):
+    """One labelled block within a session (e.g. warm-up, main set, cool-down)."""
+
+    label: str = Field(description="Short block label, e.g. 'Warm-up', 'Main set', 'Cool-down'.")
+    detail: str = Field(description="What to do in this block, with target zone HR/pace and reps.")
+
+
 class PlannedSession(BaseModel):
     """A single prescribed session within the week."""
 
@@ -40,7 +47,13 @@ class PlannedSession(BaseModel):
     )
     prescription: str = Field(
         description="Full human-readable detail: structure, intervals, paces/HR, "
-        "stations, reps, loads, recoveries."
+        "stations, reps, loads, recoveries. Used as a fallback when steps is empty."
+    )
+    steps: list[Step] = Field(
+        default_factory=list,
+        description="The session broken into labelled blocks (warm-up / main set / "
+        "cool-down, or rounds). Drives the structured card; leave empty for a "
+        "single-block session like an easy run or rest.",
     )
     purpose: str = Field(description="One sentence on the training purpose.")
     hyrox_focus: Optional[str] = Field(
