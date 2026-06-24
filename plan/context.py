@@ -23,7 +23,15 @@ from dotenv import load_dotenv
 
 from dashboard import metrics, query
 from plan import phase
-from plan.config import DEFAULT_CONFIG, HYROX_STATIONS, PlanConfig
+from plan.config import (
+    ATHLETE_LOADS,
+    DEFAULT_CONFIG,
+    HYROX_DIVISION,
+    HYROX_STANDARDS,
+    HYROX_STATIONS,
+    STRENGTH_LIBRARY,
+    PlanConfig,
+)
 from plan.pace import seconds_to_pace
 
 logger = logging.getLogger(__name__)
@@ -260,6 +268,11 @@ bodyweight circuits.
   Hyrox stations: {", ".join(HYROX_STATIONS)}.
   Strength/explosive movements: {", ".join(STRENGTH_LIBRARY)}.
 
+LOADS ({HYROX_DIVISION}) — prescribe station work AT these competition standards (the athlete handles them):
+{chr(10).join(f"  {k}: {v}" for k, v in HYROX_STANDARDS.items())}
+  Known athlete capacity: {", ".join(f"{k} {v}" for k, v in ATHLETE_LOADS.items())}.
+  For barbell lifts, prescribe by RPE (e.g. 4-5 reps @ RPE 7-8) — exact working weights not yet known.
+
 GUARDRAILS:
   - Exactly 7 entries, one per weekday Monday..Sunday (use session_type "rest" for rest days).
   - Keep "hard" days separated by >= 1 easy or rest day.
@@ -275,6 +288,12 @@ GUARDRAILS:
   - Break structured sessions (intervals, circuits, sims) into 2-5 `steps` (warm-up / main set /
     cool-down, or rounds), each a short label + detail. Leave `steps` empty ([]) for single-effort
     sessions like easy runs or rest. Always also fill the one-line `prescription` as a fallback.
+  - DETAIL & CONSISTENCY: be explicit and unambiguous. State the exact number of rounds/sets/reps —
+    never leave the reader guessing how many times to repeat a block. `distance_m` and `duration_min`
+    MUST equal the sum across the steps (e.g. 4 rounds x 1 km run => distance_m = 4000, not 8000).
+  - LOADS: give a concrete weight for every strength/station movement — station work at the Hyrox
+    division standard above, barbell lifts by RPE. State reps and rest. Never write a loadless
+    "sled push" or "wall balls" without the kg.
   - Fill `why` for every session (the justification AND the trade-off — why not more), and the
     week-level `methodology` (principles only). Do NOT invent citations; sources are curated separately.
 

@@ -88,6 +88,26 @@ STRENGTH_LIBRARY: tuple[str, ...] = (
     "overhead_press",
 )
 
+# The athlete's target Hyrox division and its official station standards. Station
+# work is prescribed AT these competition loads (specificity); see hycrew.com/hyrox/weights.
+HYROX_DIVISION = "Men's Pro"
+HYROX_STANDARDS: dict[str, str] = {
+    "sled_push": "202 kg / 50 m",
+    "sled_pull": "153 kg / 50 m",
+    "farmers_carry": "2x32 kg / 200 m",
+    "sandbag_lunges": "30 kg / 100 m",
+    "wall_balls": "9 kg to 3.0 m, 100 reps",
+    "ski_erg": "1000 m",
+    "rowing": "1000 m",
+    "burpee_broad_jump": "bodyweight, 80 m",
+}
+# Known athlete capacities (update as they report feeling too light/heavy). Barbell
+# lifts are prescribed by RPE until working weights are provided.
+ATHLETE_LOADS: dict[str, str] = {
+    "wall_balls": "9 kg, ~20 unbroken (build to 25+)",
+    "sandbag_lunges": "30 kg comfortable",
+}
+
 
 # Current target: Hyrox on 2026-08-02. 6 training days/week (4 runs + 2 strength),
 # Friday rest, long run on Sunday. Swap RACE_DATE/target_race to re-point at a 21k.
