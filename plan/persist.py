@@ -51,6 +51,7 @@ def _to_rows(week: PlannedWeek, week_start: date) -> list[dict[str, Any]]:
                     "duration_min": s.duration_min,
                     "distance_m": s.distance_m,
                     "steps": [step.model_dump() for step in s.steps],
+                    "why": s.why,
                 },
                 "purpose": s.purpose,
                 "hyrox_focus": s.hyrox_focus,
@@ -90,6 +91,7 @@ def persist(path: Path, cfg: PlanConfig = DEFAULT_CONFIG) -> int:
             "model": _GENERATOR,
             "input_summary": bundle.summary,
             "rationale": week.rationale,
+            "methodology": week.methodology,
         },
         on_conflict="week_start",
     ).execute()

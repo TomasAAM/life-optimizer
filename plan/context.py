@@ -199,6 +199,9 @@ def render_brief(bundle: ContextBundle) -> str:
     schema_example = {
         "rationale": "2-4 sentences: how this week reflects the phase, recent load/recovery, "
         "and any auto-regulation applied.",
+        "methodology": "3-5 sentences naming the principles applied (polarized easy volume, "
+        "threshold to raise LT2, heavy/explosive strength for economy kept off hard-run days, "
+        "gradual load, taper near race). Principles only — no invented citations.",
         "sessions": [
             {
                 "day": "Monday",
@@ -216,19 +219,26 @@ def render_brief(bundle: ContextBundle) -> str:
                     {"label": "Cool-down", "detail": "10 min easy"},
                 ],
                 "purpose": "One sentence on the training purpose.",
+                "why": "Why this session at this dose today, and why not more — tied to a "
+                "principle (e.g. 'threshold raises LT2; only one hard run today to stay polarized "
+                "and protect recovery').",
                 "hyrox_focus": "compromised running | sled | wall balls | ... | null",
             }
         ],
     }
 
-    return f"""You are an expert endurance and Hyrox coach. Write a threshold-centric, \
-lactate-anchored training week. Optimize for HYROX (compromised running + strength-endurance \
-across 8 stations) and half-marathon running; the shared lever is raising LT2 and aerobic base. \
-Auto-regulate: when recovery is poor (low readiness, strongly negative TSB/form, rising acute \
-load), cut intensity and volume rather than pushing on. Anchor every run to the measured zones \
-below — never generic %HRmax.
+    return f"""You are an expert coach for a HYBRID endurance athlete. Write a threshold-centric, \
+lactate-anchored training week grounded in hybrid/concurrent-training science (the deep evidence \
+base; Hyrox-specific research is still thin). Optimize EQUALLY for {cfg.target_race.upper()} \
+(compromised running + strength-endurance across 8 stations) and {cfg.secondary_goal} running; \
+the shared lever is raising LT2 and aerobic base. Apply the principles: mostly-easy polarized \
+volume, sparing high-quality threshold work, heavy/explosive strength for running economy, and \
+gradual load progression. Auto-regulate: when recovery is poor (low readiness, strongly negative \
+TSB/form, rising load), cut intensity and volume rather than pushing on. Anchor every run to the \
+measured zones below — never generic %HRmax.
 
-TARGET: {cfg.target_race.upper()} on {cfg.race_date.isoformat()}
+TARGET: {cfg.target_race.upper()} on {cfg.race_date.isoformat()} | parallel goal: {cfg.secondary_goal} \
+| weighting: {cfg.goal_weighting}
 WEEK TO PLAN: Monday {bundle.week_start.isoformat()}
 
 PERIODIZATION (deterministic — do not override):
@@ -245,17 +255,28 @@ AVAILABILITY & STRUCTURE:
   {cfg.sessions_per_week} sessions/week: ~{cfg.runs_per_week} runs + ~{cfg.strength_per_week} \
 strength/functional; the rest are rest days.
   Default rest day(s): {", ".join(cfg.rest_days)}. Long/endurance run on {cfg.long_run_day}.
+  Gym access: {cfg.gym_access} — program heavy barbell and explosive/plyometric work, not only \
+bodyweight circuits.
   Hyrox stations: {", ".join(HYROX_STATIONS)}.
+  Strength/explosive movements: {", ".join(STRENGTH_LIBRARY)}.
 
 GUARDRAILS:
   - Exactly 7 entries, one per weekday Monday..Sunday (use session_type "rest" for rest days).
   - Keep "hard" days separated by >= 1 easy or rest day.
+  - Weight the two goals EQUALLY: balance pure running quality (threshold, long run, economy) with
+    Hyrox-specific work (compromised running, stations) roughly 50/50 across the week.
+  - Use the full gym: at least one strength session should include heavy compound or explosive
+    lifts (squat, trap-bar deadlift, hip thrust, jumps) for running economy and sled power.
+  - Keep explosive/plyometric strength OFF hard-run days (same-session concurrent training blunts
+    power) — schedule it on an easy-run or standalone strength day.
   - Bias volume toward the weekly-load band; in taper cut volume but keep some race-pace intensity.
-  - In build/peak include >= 1 Hyrox compromised-running session and >= 1 station/strength-endurance session.
+  - In build/peak include >= 1 compromised-running session and >= 1 station/strength-endurance session.
   - If readiness is LOW or TSB is strongly negative, downgrade the hardest session(s) and say so.
   - Break structured sessions (intervals, circuits, sims) into 2-5 `steps` (warm-up / main set /
     cool-down, or rounds), each a short label + detail. Leave `steps` empty ([]) for single-effort
     sessions like easy runs or rest. Always also fill the one-line `prescription` as a fallback.
+  - Fill `why` for every session (the justification AND the trade-off — why not more), and the
+    week-level `methodology` (principles only). Do NOT invent citations; sources are curated separately.
 
 OUTPUT: write JSON matching this shape to {PLAN_FILE}, then run `python -m plan.persist`:
 {json.dumps(schema_example, indent=2)}

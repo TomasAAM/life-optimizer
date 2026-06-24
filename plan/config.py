@@ -36,6 +36,15 @@ class PlanConfig:
         Anthropic model id used to generate each week.
     recent_window_days : int
         How many days of recent training to summarize into the prompt.
+    secondary_goal : str
+        The parallel goal trained alongside the target race (e.g. "21k").
+    goal_weighting : str
+        How to balance the target race and the secondary goal — "equal" or
+        "race_priority". "equal" splits running quality and race-specific work
+        roughly 50/50; "race_priority" biases toward the target race.
+    gym_access : str
+        Equipment availability — "full" enables heavy barbell and plyometric
+        prescriptions, not just bodyweight/station circuits.
     """
 
     target_race: str
@@ -47,6 +56,9 @@ class PlanConfig:
     long_run_day: str
     model: str
     recent_window_days: int
+    secondary_goal: str
+    goal_weighting: str
+    gym_access: str
 
 
 # The eight Hyrox stations, in race order, the generator draws functional work from.
@@ -59,6 +71,21 @@ HYROX_STATIONS: tuple[str, ...] = (
     "farmers_carry",
     "sandbag_lunges",
     "wall_balls",
+)
+
+# Heavy and explosive gym movements (full-gym access) that drive running economy
+# and station power. Kept off hard-run days to avoid the one real interference
+# risk — explosive-strength loss in same-session concurrent training.
+STRENGTH_LIBRARY: tuple[str, ...] = (
+    "back_squat",
+    "trap_bar_deadlift",
+    "hip_thrust",
+    "walking_lunge",
+    "box_jump",
+    "hurdle_hop",
+    "weighted_step_up",
+    "pull_up",
+    "overhead_press",
 )
 
 
@@ -74,4 +101,7 @@ DEFAULT_CONFIG = PlanConfig(
     long_run_day="Sunday",
     model="claude-sonnet-4-6",
     recent_window_days=28,
+    secondary_goal="21k",
+    goal_weighting="equal",
+    gym_access="full",
 )

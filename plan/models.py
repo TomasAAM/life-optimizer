@@ -56,6 +56,12 @@ class PlannedSession(BaseModel):
         "single-block session like an easy run or rest.",
     )
     purpose: str = Field(description="One sentence on the training purpose.")
+    why: str = Field(
+        description="The justification AND the trade-off: why this session, at this "
+        "dose, today — and why not more (more volume / intensity / strength). Tie to "
+        "the training principle it serves (e.g. polarized easy volume, threshold to "
+        "raise LT2, strength for economy, gradual load).",
+    )
     hyrox_focus: Optional[str] = Field(
         default=None,
         description="Which Hyrox demand this targets (e.g. 'compromised running', "
@@ -69,5 +75,13 @@ class PlannedWeek(BaseModel):
     rationale: str = Field(
         description="2-4 sentences explaining how this week reflects the phase, the "
         "athlete's recent load/recovery, and any auto-regulation applied."
+    )
+    methodology: str = Field(
+        description="3-5 sentences naming the training PRINCIPLES this week applies "
+        "(polarized mostly-easy volume, threshold work to raise LT2, heavy/explosive "
+        "strength for economy kept off hard-run days, gradual load progression, taper "
+        "when near the race) and why those principles fit a hybrid endurance athlete. "
+        "Reference principles only — do NOT invent citations; the sources are curated "
+        "separately.",
     )
     sessions: list[PlannedSession]
