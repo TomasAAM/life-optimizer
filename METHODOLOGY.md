@@ -63,6 +63,15 @@ Hyrox rewards aerobic + anaerobic power, local muscular endurance, max strength,
 - **Emerging** — Acute physiological responses & determinants in Hyrox 2025 (Frontiers in Physiology).
   https://pmc.ncbi.nlm.nih.gov/articles/PMC11994925/ — small literature; directional, not settled.
 
+### 8. Train station work at competition load (specificity)
+Station strength-endurance is prescribed at the athlete's Hyrox division standard (Men's Pro: sled
+push 202 kg, sled pull 153 kg, farmers 2x32 kg, sandbag lunge 30 kg, wall ball 9 kg to 3.0 m) so the
+neuromuscular and metabolic demand matches race day. Heavy barbell lifts are loaded by RPE and
+progressed individually. Exact kilos are individualized and autoregulated by the athlete's feedback;
+the evidence backs the *method* (race-specific loading + heavy/explosive lifts for economy), not a
+universal number.
+- Reference — official HYROX station weights by division: https://www.hycrew.com/hyrox/weights
+
 ## How the generator uses this
 The weekly generator references these **principles** (never inventing citations) to produce a
 per-session `why` (justification + the trade-off) and a week-level `methodology` note. The sources

@@ -20,11 +20,37 @@ SessionType = Literal["run", "strength", "functional", "sim", "rest", "cross"]
 Intensity = Literal["easy", "moderate", "hard"]
 
 
-class Step(BaseModel):
-    """One labelled block within a session (e.g. warm-up, main set, cool-down)."""
+StepKind = Literal["run", "rest", "station", "strength", "note"]
+StepPhase = Literal["warmup", "main", "cooldown"]
 
-    label: str = Field(description="Short block label, e.g. 'Warm-up', 'Main set', 'Cool-down'.")
-    detail: str = Field(description="What to do in this block, with target zone HR/pace and reps.")
+
+class Step(BaseModel):
+    """One typed segment of a session, rendered as a Runna-style row.
+
+    Consecutive segments that share a ``phase`` are grouped under one colored band
+    (Warm-up / Main set / Cool-down). A repeated block (e.g. 3x threshold) is
+    listed as its individual work + rest segments, all with phase "main".
+    """
+
+    phase: Optional[StepPhase] = Field(
+        default=None,
+        description="Band grouping: warmup, main, or cooldown. Null for a single-effort "
+        "session (e.g. an easy run) that needs no bands.",
+    )
+    kind: StepKind = Field(default="note", description="Segment type — drives icon and tag.")
+    metric: str = Field(
+        description="The bold primary line: the dose, e.g. '10 min at threshold', '1 km run', "
+        "'40 wall balls', '2:30 jog recovery'.",
+    )
+    target: Optional[str] = Field(
+        default=None,
+        description="Sub-line: target HR/pace/effort or a short note, e.g. '155-163 bpm, "
+        "4:48-4:34/km' or 'then 90s walk'.",
+    )
+    load: Optional[str] = Field(
+        default=None,
+        description="Weight for strength/station moves, e.g. '9 kg', '~150 kg'. Null for runs/rest.",
+    )
 
 
 class PlannedSession(BaseModel):

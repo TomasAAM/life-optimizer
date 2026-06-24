@@ -23,7 +23,15 @@ from dotenv import load_dotenv
 
 from dashboard import metrics, query
 from plan import phase
-from plan.config import DEFAULT_CONFIG, HYROX_STATIONS, PlanConfig
+from plan.config import (
+    ATHLETE_LOADS,
+    DEFAULT_CONFIG,
+    HYROX_DIVISION,
+    HYROX_STANDARDS,
+    HYROX_STATIONS,
+    STRENGTH_LIBRARY,
+    PlanConfig,
+)
 from plan.pace import seconds_to_pace
 
 logger = logging.getLogger(__name__)
@@ -214,9 +222,16 @@ def render_brief(bundle: ContextBundle) -> str:
                 "prescription": "Full detail (one-line fallback): intervals, target zone "
                 "HR/pace, recoveries, station reps/loads.",
                 "steps": [
-                    {"label": "Warm-up", "detail": "15 min easy, Z1"},
-                    {"label": "Main set", "detail": "3x10 min @ threshold, 155-163 bpm, 2:30 jog"},
-                    {"label": "Cool-down", "detail": "10 min easy"},
+                    {"phase": "warmup", "kind": "run", "metric": "15 min easy",
+                     "target": "Z1, no faster than 5:22/km", "load": None},
+                    {"phase": "main", "kind": "run", "metric": "10 min at threshold",
+                     "target": "155-163 bpm, 4:48-4:34/km", "load": None},
+                    {"phase": "main", "kind": "rest", "metric": "2:30 jog recovery",
+                     "target": "easy", "load": None},
+                    {"phase": "main", "kind": "station", "metric": "sled push 4x12.5 m",
+                     "target": "then 90s walk", "load": "~150 kg"},
+                    {"phase": "cooldown", "kind": "run", "metric": "10 min easy",
+                     "target": "or slower", "load": None},
                 ],
                 "purpose": "One sentence on the training purpose.",
                 "why": "Why this session at this dose today, and why not more — tied to a "
@@ -260,6 +275,11 @@ bodyweight circuits.
   Hyrox stations: {", ".join(HYROX_STATIONS)}.
   Strength/explosive movements: {", ".join(STRENGTH_LIBRARY)}.
 
+LOADS ({HYROX_DIVISION}) — prescribe station work AT these competition standards (the athlete handles them):
+{chr(10).join(f"  {k}: {v}" for k, v in HYROX_STANDARDS.items())}
+  Known athlete capacity: {", ".join(f"{k} {v}" for k, v in ATHLETE_LOADS.items())}.
+  For barbell lifts, prescribe by RPE (e.g. 4-5 reps @ RPE 7-8) — exact working weights not yet known.
+
 GUARDRAILS:
   - Exactly 7 entries, one per weekday Monday..Sunday (use session_type "rest" for rest days).
   - Keep "hard" days separated by >= 1 easy or rest day.
@@ -272,9 +292,19 @@ GUARDRAILS:
   - Bias volume toward the weekly-load band; in taper cut volume but keep some race-pace intensity.
   - In build/peak include >= 1 compromised-running session and >= 1 station/strength-endurance session.
   - If readiness is LOW or TSB is strongly negative, downgrade the hardest session(s) and say so.
-  - Break structured sessions (intervals, circuits, sims) into 2-5 `steps` (warm-up / main set /
-    cool-down, or rounds), each a short label + detail. Leave `steps` empty ([]) for single-effort
-    sessions like easy runs or rest. Always also fill the one-line `prescription` as a fallback.
+  - STEPS = typed segments rendered as Runna-style rows. Each segment has: phase (warmup/main/
+    cooldown, or null), kind (run/rest/station/strength/note), metric (the bold dose), target
+    (sub-line: HR/pace/effort or a note), load (kg for station/strength, else null). List a repeated
+    block (e.g. 3x threshold) as its individual work + rest segments, all phase "main". For a
+    compromised-running sim, alternate run segments and station segments (with load), each round.
+    Leave `steps` empty ([]) only for a trivial single-effort session; always also fill the one-line
+    `prescription` as a fallback.
+  - DETAIL & CONSISTENCY: be explicit and unambiguous. State the exact number of rounds/sets/reps —
+    never leave the reader guessing how many times to repeat a block. `distance_m` and `duration_min`
+    MUST equal the sum across the steps (e.g. 4 rounds x 1 km run => distance_m = 4000, not 8000).
+  - LOADS: give a concrete weight for every strength/station movement — station work at the Hyrox
+    division standard above, barbell lifts by RPE. State reps and rest. Never write a loadless
+    "sled push" or "wall balls" without the kg.
   - Fill `why` for every session (the justification AND the trade-off — why not more), and the
     week-level `methodology` (principles only). Do NOT invent citations; sources are curated separately.
 

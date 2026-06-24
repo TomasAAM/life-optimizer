@@ -45,6 +45,19 @@ _INTENSITY_BADGE = {
     "moderate": ("#fffbeb", "#b45309"),
     "easy": ("#f0fdf4", "#16a34a"),
 }
+# Runna-style phase bands (saturated) and per-segment type tags.
+_PHASE_BAND = {
+    "warmup": ("Warm-up", "#e0683a"),
+    "main": ("Main set", "#5a51c9"),
+    "cooldown": ("Cool-down", "#14a08a"),
+}
+_KIND_TAG = {
+    "run": ("RUN", "#1d9e75"),
+    "rest": ("REST", "#378add"),
+    "station": ("STATION", "#ba7517"),
+    "strength": ("STRENGTH", "#534ab7"),
+    "note": ("", "#94a3b8"),
+}
 
 # Curated, vetted bibliography rendered as the static sources panel. Kept here (not
 # model-generated) so a citation can never be hallucinated. (claim, citation, tier, url).
@@ -359,16 +372,49 @@ def _zones_table(zones: pd.DataFrame) -> str:
 
 
 def _session_steps_html(presc: dict) -> str:
-    """Render a session's body: structured steps, or the detail text as a fallback."""
-    steps = presc.get("steps") or []
-    if steps:
-        return "".join(
-            f"<div class='sess-step'><span class='sk'>{escape(str(s.get('label', '')))}</span>"
-            f"<span class='sv'>{escape(str(s.get('detail', '')))}</span></div>"
-            for s in steps
+    """Render a session body as Runna-style banded segment rows.
+
+    Typed segments (with ``metric``) render as phase bands + run/rest/station rows.
+    Legacy ``{label, detail}`` steps and empty steps fall back to simple rows so
+    older stored weeks still display.
+    """
+    steps = [s for s in (presc.get("steps") or []) if isinstance(s, dict)]
+    typed = [s for s in steps if s.get("metric")]
+
+    if not typed:
+        if steps:  # legacy {label, detail}
+            return "".join(
+                f"<div class='sess-step'><span class='sk'>{escape(str(s.get('label', '')))}</span>"
+                f"<span class='sv'>{escape(str(s.get('detail', '')))}</span></div>"
+                for s in steps
+            )
+        detail = escape(str(presc.get("detail", "") or ""))
+        return f"<div class='sess-step'><span class='sk'>Session</span><span class='sv'>{detail}</span></div>"
+
+    out: list[str] = []
+    current_phase = "__start__"
+    num = 0
+    for s in typed:
+        phase = s.get("phase")
+        if phase != current_phase:
+            current_phase = phase
+            if phase in _PHASE_BAND:
+                label, color = _PHASE_BAND[phase]
+                out.append(f"<div class='seg-band' style='background:{color}'>{escape(label)}</div>")
+        num += 1
+        tag_text, tag_color = _KIND_TAG.get(s.get("kind", "note"), ("", "#94a3b8"))
+        metric = escape(str(s.get("metric", "") or ""))
+        load = s.get("load")
+        load_html = f" <span class='seg-load'>@ {escape(str(load))}</span>" if load else ""
+        target = s.get("target")
+        target_html = f"<div class='seg-target'>{escape(str(target))}</div>" if target else ""
+        tag_html = f"<span class='seg-tag' style='color:{tag_color}'>{tag_text}</span>" if tag_text else ""
+        out.append(
+            f"<div class='seg-row'><span class='seg-num'>{num}</span>"
+            f"<div class='seg-main'><div class='seg-metric'><b>{metric}</b>{load_html}</div>"
+            f"{target_html}</div>{tag_html}</div>"
         )
-    detail = escape(str(presc.get("detail", "") or ""))
-    return f"<div class='sess-step'><span class='sk'>Session</span><span class='sv'>{detail}</span></div>"
+    return f"<div class='seg-list'>{''.join(out)}</div>"
 
 
 def _plan_list(sessions: pd.DataFrame) -> str:
@@ -592,6 +638,19 @@ def render_html(
   .sess-step {{ display: flex; gap: 10px; align-items: baseline; padding: 5px 0; }}
   .sess-step .sk {{ min-width: 84px; font-size: 0.78rem; color: #64748b; }}
   .sess-step .sv {{ font-size: 0.88rem; color: #334155; line-height: 1.5; }}
+  .seg-list {{ border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-top: 4px; }}
+  .seg-band {{ padding: 6px 12px; font-size: 0.74rem; font-weight: 600; color: #fff;
+          letter-spacing: 0.03em; }}
+  .seg-row {{ display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+          border-top: 1px solid #f1f5f9; }}
+  .seg-list > .seg-row:first-child {{ border-top: none; }}
+  .seg-num {{ width: 16px; text-align: center; color: #94a3b8; font-size: 0.78rem; flex: none; }}
+  .seg-main {{ flex: 1; min-width: 0; }}
+  .seg-metric {{ font-size: 0.9rem; color: #0f172a; }}
+  .seg-metric b {{ font-weight: 600; }}
+  .seg-load {{ color: #334155; font-weight: 600; }}
+  .seg-target {{ font-size: 0.78rem; color: #64748b; margin-top: 1px; }}
+  .seg-tag {{ font-size: 0.66rem; font-weight: 600; letter-spacing: 0.04em; flex: none; }}
   .sess-purpose {{ font-size: 0.8rem; color: #64748b; font-style: italic;
           margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9; }}
   .sess-why {{ font-size: 0.84rem; color: #334155; margin-top: 8px; padding: 8px 10px;
