@@ -46,6 +46,50 @@ _INTENSITY_BADGE = {
     "easy": ("#f0fdf4", "#16a34a"),
 }
 
+# Curated, vetted bibliography rendered as the static sources panel. Kept here (not
+# model-generated) so a citation can never be hallucinated. (claim, citation, tier, url).
+_METHODOLOGY_SOURCES = [
+    ("Mostly-easy polarized volume beats threshold-heavy blocks",
+     "Rosenblat et al. 2019 — systematic review + meta-analysis of RCTs", "strong",
+     "https://pubmed.ncbi.nlm.nih.gov/29863593/"),
+    ("Elite distance runners train predominantly at low intensity",
+     "Casado et al. 2022 — systematic review (IJSPP)", "strong",
+     "https://journals.humankinetics.com/view/journals/ijspp/17/6/article-p820.xml"),
+    ("Strength training improves running economy",
+     "Llanos-Lagos et al. 2024 — meta-analysis (Sports Medicine)", "strong",
+     "https://pubmed.ncbi.nlm.nih.gov/38165636/"),
+    ("Concurrent strength + endurance is largely compatible (interference is narrow)",
+     "Concurrent training & hypertrophy 2022 — systematic review + meta-analysis", "strong",
+     "https://pmc.ncbi.nlm.nih.gov/articles/PMC9474354/"),
+    ("A ~2-week taper with volume cut 41-60% maximizes performance",
+     "Bosquet et al. 2007 — meta-analysis (Med Sci Sports Exerc)", "strong",
+     "https://pubmed.ncbi.nlm.nih.gov/17762369/"),
+    ("The ACWR injury 'sweet spot' is statistically contested — build gradually, do not spike",
+     "Impellizzeri et al. 2020 — conceptual critique (IJSPP)", "contested",
+     "https://journals.humankinetics.com/view/journals/ijspp/15/6/article-p907.xml"),
+    ("Hyrox demands aerobic + anaerobic power + economy under fatigue",
+     "Acute responses & determinants in Hyrox 2025 (Frontiers) — limited literature", "emerging",
+     "https://pmc.ncbi.nlm.nih.gov/articles/PMC11994925/"),
+]
+_TIER_BADGE = {
+    "strong": ("#f0fdf4", "#16a34a"),
+    "contested": ("#fffbeb", "#b45309"),
+    "emerging": ("#f1f5f9", "#475569"),
+}
+
+
+def _methodology_sources_html() -> str:
+    """Render the static, vetted sources list (claim, citation link, evidence tier)."""
+    rows = []
+    for claim, cite, tier, url in _METHODOLOGY_SOURCES:
+        bg, fg = _TIER_BADGE.get(tier, ("#f1f5f9", "#475569"))
+        rows.append(
+            f"<div class='src'><div class='src-main'><div class='src-claim'>{escape(claim)}</div>"
+            f"<a class='src-cite' href='{escape(url)}' target='_blank' rel='noopener'>{escape(cite)}</a></div>"
+            f"<span class='tier' style='background:{bg};color:{fg}'>{tier}</span></div>"
+        )
+    return f"<div class='src-list'>{''.join(rows)}</div>"
+
 
 @dataclass(frozen=True)
 class PlanView:
@@ -359,6 +403,12 @@ def _plan_list(sessions: pd.DataFrame) -> str:
         status = getattr(r, "status", "upcoming")
         status_color = _STATUS_COLOR.get(status, "#cbd5e1")
 
+        why = str(presc.get("why", "") or "")
+        why_html = (
+            f"<div class='sess-why'><span class='why-label'>Why this, not more</span>"
+            f"{escape(why)}</div>" if why else ""
+        )
+
         items.append(
             f"<div class='sess'>"
             f"<div class='sess-row' data-sess='{i}'>"
@@ -371,7 +421,7 @@ def _plan_list(sessions: pd.DataFrame) -> str:
             f"<span class='chev'>&#9662;</span>"
             f"</div>"
             f"<div class='sess-body' id='psess{i}'>{_session_steps_html(presc)}"
-            f"<div class='sess-purpose'>{escape(str(r.purpose or ''))}</div></div>"
+            f"<div class='sess-purpose'>{escape(str(r.purpose or ''))}</div>{why_html}</div>"
             f"</div>"
         )
     return f"<div class='sess-list'>{''.join(items)}</div>"
@@ -415,6 +465,8 @@ def _plan_section(plan: PlanView) -> str:
 
     rationale = escape(str(week.get("rationale") or ""))
     model = escape(str(week.get("model") or ""))
+    methodology = escape(str(week.get("methodology") or ""))
+    methodology_html = f'<p class="methodology">{methodology}</p>' if methodology else ""
 
     return f"""<h2>Training plan</h2>
   <div class="cards">{card_html}</div>
@@ -427,6 +479,13 @@ def _plan_section(plan: PlanView) -> str:
     <p class="plan-hint">Click a session to see the full breakdown.</p>
     {_plan_list(plan.sessions)}
     <p class="rationale"><b>Coach's note:</b> {rationale}</p>
+  </div>
+  <div class="panel">
+    <div class="section-label">Methodology &amp; sources</div>
+    {methodology_html}
+    {_methodology_sources_html()}
+    <p class="src-note">Evidence tiers: strong = meta-analysis / RCT review · contested =
+    methodologically debated · emerging = limited or practice-derived.</p>
   </div>
   <div class="panel">
     <div class="section-label">Lactate-anchored zones</div>
@@ -535,6 +594,21 @@ def render_html(
   .sess-step .sv {{ font-size: 0.88rem; color: #334155; line-height: 1.5; }}
   .sess-purpose {{ font-size: 0.8rem; color: #64748b; font-style: italic;
           margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9; }}
+  .sess-why {{ font-size: 0.84rem; color: #334155; margin-top: 8px; padding: 8px 10px;
+          background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 0; }}
+  .why-label {{ display: block; font-size: 0.68rem; font-weight: 600; color: #64748b;
+          text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }}
+  .methodology {{ font-size: 0.88rem; color: #334155; line-height: 1.6; margin: 0 4px 14px; }}
+  .src-list {{ display: flex; flex-direction: column; gap: 6px; }}
+  .src {{ display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+          border: 1px solid #e2e8f0; border-radius: 8px; }}
+  .src-main {{ flex: 1; min-width: 0; }}
+  .src-claim {{ font-size: 0.86rem; color: #334155; }}
+  .src-cite {{ font-size: 0.76rem; color: #2563eb; text-decoration: none; }}
+  .src-cite:hover {{ text-decoration: underline; }}
+  .tier {{ font-size: 0.68rem; font-weight: 600; border-radius: 6px; padding: 2px 8px;
+          text-transform: capitalize; white-space: nowrap; }}
+  .src-note {{ font-size: 0.76rem; color: #94a3b8; margin: 12px 4px 2px; line-height: 1.5; }}
   .focus {{ font-size: 0.7rem; background: #eef2ff; color: #4338ca; border-radius: 6px;
           padding: 1px 6px; margin-left: 6px; }}
   .badge {{ color: #fff; font-size: 0.72rem; font-weight: 600; border-radius: 6px;
