@@ -38,6 +38,7 @@ def seconds_to_pace(seconds: int | None) -> str:
     str
         Pace as ``"mm:ss"``, or ``"—"`` when ``seconds`` is ``None``.
     """
-    if seconds is None:
+    if seconds is None or seconds != seconds:  # None or NaN
         return "—"
-    return f"{seconds // 60}:{seconds % 60:02d}"
+    total = int(round(seconds))
+    return f"{total // 60}:{total % 60:02d}"
