@@ -2,7 +2,7 @@ name: Weekly Ingestion & Dashboard
 
 on:
   schedule:
-    - cron: '0 9 * * 0'  # Every Sunday at 9am UTC
+    - cron: '0 9 * * *'  # Every day at 9am UTC
   workflow_dispatch:      # Allow manual trigger
 
 # Allow the deploy job to publish to GitHub Pages.
