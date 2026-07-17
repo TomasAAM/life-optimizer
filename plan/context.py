@@ -102,15 +102,31 @@ def _recent_summary(
             )
 
     latest_readiness: dict[str, Any] = {}
+    readiness_trend: list[dict[str, Any]] = []
     if not readiness.empty:
-        rd = readiness.sort_values("date").iloc[-1]
+        # Garmin writes several readiness snapshots per day, and they swing
+        # wildly because each one re-baselines after a workout. Collapse to one
+        # representative value per day - the morning (earliest) reading, which
+        # is the actionable metric Garmin surfaces - then report the recent
+        # trend so auto-regulation sees the trajectory, not a single snapshot.
+        daily = readiness.sort_values("ts").groupby("date", as_index=False).first()
+        daily = daily.sort_values("date")
+        for r in daily.tail(10).itertuples():
+            readiness_trend.append(
+                {
+                    "date": str(r.date),
+                    "score": None if pd.isna(r.score) else int(r.score),
+                    "level": r.level,
+                }
+            )
+        rd = daily.iloc[-1]
         latest_readiness = {
             "date": str(rd.get("date")),
             "score": None if pd.isna(rd.get("score")) else int(rd["score"]),
             "level": rd.get("level"),
             "recovery_time_h": None
             if pd.isna(rd.get("recovery_time_h"))
-            else int(rd["recovery_time_h"]),
+            else round(float(rd["recovery_time_h"]), 1),
         }
 
     return {
@@ -126,6 +142,7 @@ def _recent_summary(
         "hrv_last_night": snapshot.hrv_night,
         "hrv_status": snapshot.hrv_status,
         "readiness": latest_readiness,
+        "readiness_trend": readiness_trend,
         "recent_sessions": sessions,
     }
 
