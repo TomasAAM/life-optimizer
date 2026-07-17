@@ -30,6 +30,7 @@ from plan.config import (
     HYROX_STANDARDS,
     HYROX_STATIONS,
     STRENGTH_LIBRARY,
+    STRENGTH_TEMPLATE,
     PlanConfig,
 )
 from plan.pace import seconds_to_pace
@@ -57,7 +58,11 @@ class ContextBundle:
     weeks_remaining : int
         Whole weeks until the race.
     load_band : tuple of float
-        ACWR-bounded weekly training-load target.
+        ACWR-bounded weekly training-load target (already recovery-scaled).
+    load_scaler : float
+        Recovery multiplier applied to the load band (1.0 = no cut).
+    weekly_km_band : tuple of float
+        Phase-scaled weekly running-volume target (km).
     summary : dict
         Recent training and recovery snapshot (the audit input).
     zones : pandas.DataFrame
@@ -69,6 +74,8 @@ class ContextBundle:
     phase_name: str
     weeks_remaining: int
     load_band: tuple[float, float]
+    load_scaler: float
+    weekly_km_band: tuple[float, float]
     summary: dict[str, Any]
     zones: pd.DataFrame
 
@@ -173,8 +180,21 @@ def gather(cfg: PlanConfig = DEFAULT_CONFIG) -> ContextBundle:
 
     week_start = phase.upcoming_monday(date.today())
     phase_name, weeks_remaining = phase.phase_for_week(week_start, cfg.race_date)
-    load_band = phase.load_target_band(snapshot.ctl * 7.0, phase_name)
     summary = _recent_summary(activities, load_series, snapshot, readiness, cfg.recent_window_days)
+
+    hrv_baseline_low = None
+    if not hrv_series.empty and pd.notna(hrv_series.iloc[-1].get("baseline_low")):
+        hrv_baseline_low = float(hrv_series.iloc[-1]["baseline_low"])
+    readiness_scores = [t["score"] for t in summary["readiness_trend"] if t["score"] is not None]
+    load_scaler = phase.recovery_scaler(
+        readiness_scores=readiness_scores,
+        hrv_status=snapshot.hrv_status,
+        hrv_night=snapshot.hrv_night,
+        hrv_baseline_low=hrv_baseline_low,
+        tsb=snapshot.tsb,
+    )
+    load_band = phase.load_target_band(snapshot.ctl * 7.0, phase_name, scaler=load_scaler)
+    weekly_km_band = phase.weekly_km_target(cfg.base_weekly_km, phase_name)
 
     return ContextBundle(
         cfg=cfg,
@@ -182,6 +202,8 @@ def gather(cfg: PlanConfig = DEFAULT_CONFIG) -> ContextBundle:
         phase_name=phase_name,
         weeks_remaining=weeks_remaining,
         load_band=load_band,
+        load_scaler=load_scaler,
+        weekly_km_band=weekly_km_band,
         summary=summary,
         zones=zones,
     )
@@ -265,9 +287,10 @@ base; Hyrox-specific research is still thin). Optimize EQUALLY for {cfg.target_r
 (compromised running + strength-endurance across 8 stations) and {cfg.secondary_goal} running; \
 the shared lever is raising LT2 and aerobic base. Apply the principles: mostly-easy polarized \
 volume, sparing high-quality threshold work, heavy/explosive strength for running economy, and \
-gradual load progression. Auto-regulate: when recovery is poor (low readiness, strongly negative \
-TSB/form, rising load), cut intensity and volume rather than pushing on. Anchor every run to the \
-measured zones below — never generic %HRmax.
+gradual load progression. The weekly-load band below is ALREADY recovery-scaled, so honor it rather \
+than re-cutting. When you back off, cut VOLUME and the number/stacking of hard days — never dilute the \
+intensity of a hard session you keep (protect the hard, protect the easy, kill the grey zone). Anchor \
+every run to the measured zones below — never generic %HRmax.
 
 TARGET: {cfg.target_race.upper()} on {cfg.race_date.isoformat()} | parallel goal: {cfg.secondary_goal} \
 | weighting: {cfg.goal_weighting}
@@ -275,7 +298,10 @@ WEEK TO PLAN: Monday {bundle.week_start.isoformat()}
 
 PERIODIZATION (deterministic — do not override):
   Phase: {bundle.phase_name}   Weeks to race: {bundle.weeks_remaining}
-  Weekly training-load target band: {int(bundle.load_band[0])}–{int(bundle.load_band[1])} (Garmin units)
+  Weekly training-load target band: {int(bundle.load_band[0])}–{int(bundle.load_band[1])} (Garmin units)\
+{f" [recovery-scaled x{bundle.load_scaler}]" if bundle.load_scaler < 1.0 else ""}
+  Weekly running-volume target: {bundle.weekly_km_band[0]}–{bundle.weekly_km_band[1]} km — prescribe runs \
+to hit this; easy runs carry the volume (strength/stations don't count toward km).
 
 LACTATE-ANCHORED ZONES:
 {_format_zones(bundle.zones)}{lt1_note}
@@ -294,8 +320,8 @@ bodyweight circuits.
 
 LOADS ({HYROX_DIVISION}) — prescribe station work AT these competition standards (the athlete handles them):
 {chr(10).join(f"  {k}: {v}" for k, v in HYROX_STANDARDS.items())}
-  Known athlete capacity: {", ".join(f"{k} {v}" for k, v in ATHLETE_LOADS.items())}.
-  For barbell lifts, prescribe by RPE (e.g. 4-5 reps @ RPE 7-8) — exact working weights not yet known.
+  Known athlete capacity: {"; ".join(f"{k} {v}" for k, v in ATHLETE_LOADS.items())}.
+  STRENGTH STRUCTURE (evidence-based): {STRENGTH_TEMPLATE}
 
 GUARDRAILS:
   - Exactly 7 entries, one per weekday Monday..Sunday (use session_type "rest" for rest days).
@@ -306,9 +332,15 @@ GUARDRAILS:
     lifts (squat, trap-bar deadlift, hip thrust, jumps) for running economy and sled power.
   - Keep explosive/plyometric strength OFF hard-run days (same-session concurrent training blunts
     power) — schedule it on an easy-run or standalone strength day.
-  - Bias volume toward the weekly-load band; in taper cut volume but keep some race-pace intensity.
+  - Hit BOTH the weekly-load band and the weekly-km target; easy runs carry the km. Judge strength by
+    load + RIR, not HR/Garmin load (it under-reads lifting), and prescribe concrete kg from the loads above.
+  - Double sessions are welcome, but a double day = exactly one GYM session + one NO-GYM session (run or
+    bodyweight); gym is available any day but only ONCE per day. Never schedule two gym sessions in a day.
+  - Never place two low-intensity-FEEL days back to back (e.g. a heavy low-rep lift immediately before an
+    easy run) — pair heavy strength with a hard run to make a clean hard day, keep the easy days cleanly easy.
   - In build/peak include >= 1 compromised-running session and >= 1 station/strength-endurance session.
-  - If readiness is LOW or TSB is strongly negative, downgrade the hardest session(s) and say so.
+  - The load band is already recovery-scaled; if readiness trend is low or TSB strongly negative, cut the
+    hardest session's VOLUME (or drop a hard day) rather than watering its intensity down, and say so.
   - STEPS = typed segments rendered as Runna-style rows. Each segment has: phase (warmup/main/
     cooldown, or null), kind (run/rest/station/strength/note), metric (the bold dose), target
     (sub-line: HR/pace/effort or a note), load (kg for station/strength, else null). List a repeated

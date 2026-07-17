@@ -45,6 +45,11 @@ class PlanConfig:
     gym_access : str
         Equipment availability — "full" enables heavy barbell and plyometric
         prescriptions, not just bodyweight/station circuits.
+    base_weekly_km : float
+        The athlete's normal base weekly running volume (km). Phase-scaled into a
+        weekly-km target so runs are prescribed by volume, not arbitrary minutes.
+        Held near base year-round for the undated 21k (standing readiness); only
+        the race-week taper cuts it hard.
     """
 
     target_race: str
@@ -59,6 +64,7 @@ class PlanConfig:
     secondary_goal: str
     goal_weighting: str
     gym_access: str
+    base_weekly_km: float
 
 
 # The eight Hyrox stations, in race order, the generator draws functional work from.
@@ -104,9 +110,25 @@ HYROX_STANDARDS: dict[str, str] = {
 # Known athlete capacities (update as they report feeling too light/heavy). Barbell
 # lifts are prescribed by RPE until working weights are provided.
 ATHLETE_LOADS: dict[str, str] = {
+    "back_squat": "100 kg last used for triples; likely light — progress to RPE 8 (~110+ kg)",
+    "trap_bar_deadlift": "130 kg for top triples @ RPE 8",
+    "hip_thrust": "110 kg for 6-8 reps",
+    "weighted_step_up": "20 kg per hand",
     "wall_balls": "9 kg, ~20 unbroken (build to 25+)",
     "sandbag_lunges": "30 kg comfortable",
 }
+
+# Evidence-based heavy-strength template for running economy (Blagrove 2018;
+# Llanos-Lagos 2024): heavy, low-rep, full rest, explosive intent, ~1-2 reps in
+# reserve — never to failure. HR and Garmin training-load UNDER-READ lifting, so
+# judge effort by load + RIR, not heart rate. Progress the weight whenever a top
+# set leaves more than ~2 reps in reserve (that is the fix for "it felt easy").
+STRENGTH_TEMPLATE = (
+    "Heavy compound lifts 3-5 sets x 3-5 reps @ RPE 8 (~1-2 RIR, never to failure), "
+    "2-3 min full rest, concentric as fast as possible. Judge by load + RIR, NOT HR. "
+    "Progress load when a top set leaves >2 reps in reserve. Plyometrics (jumps/hops) "
+    "3-5 x 3-5 with full recovery, ONLY on easy-run days."
+)
 
 
 # Current target: Hyrox on 2026-08-02. 6 training days/week (4 runs + 2 strength),
@@ -124,4 +146,5 @@ DEFAULT_CONFIG = PlanConfig(
     secondary_goal="21k",
     goal_weighting="equal",
     gym_access="full",
+    base_weekly_km=53.0,
 )
