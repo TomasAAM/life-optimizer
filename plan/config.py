@@ -12,15 +12,45 @@ from datetime import date
 
 
 @dataclass(frozen=True)
+class Race:
+    """A target race on the calendar.
+
+    Parameters
+    ----------
+    name : str
+        Race label (e.g. ``"hyrox"``); stored per planned week as ``target_race``.
+    date : datetime.date
+        Race day. The periodization phase for any week is computed from the next
+        race on or after that week.
+    """
+
+    name: str
+    date: date
+
+
+@dataclass(frozen=True)
 class PlanConfig:
     """Static configuration for the training-plan generator.
 
     Parameters
     ----------
-    target_race : str
-        Race being trained for (e.g. ``"hyrox"``).
-    race_date : datetime.date
-        Date of the target race; the periodization phase is computed from it.
+    races : tuple of Race
+        The athlete's calendar of target races, in date order. For any planned
+        week the phase is computed against the next race on or after that week, so
+        one multi-week block can flow across a race into the next build with no
+        manual re-pointing.
+    block_weeks : int
+        How many weeks a generated block spans by default.
+    pre_race_freshen_days : int
+        In the week containing a race, ease off (reduce volume, keep intensity,
+        short openers) over this many final days before race day. This is the
+        athlete's chosen "half-week" freshen — deliberately shorter than the
+        classic ~2-week taper, which the shorter Hyrox effort and his err-high
+        bias justify.
+    post_race_recovery_days : int
+        Number of easy/recovery days at the very start of the week following a
+        race, before normal training resumes. The athlete prefers a single
+        recovery day and then to train through, not a full recovery week.
     sessions_per_week : int
         Total training sessions per week (the remainder are rest days).
     runs_per_week : int
@@ -28,38 +58,36 @@ class PlanConfig:
     strength_per_week : int
         How many of the weekly sessions should be strength/functional work.
     rest_days : tuple of str
-        Weekday names that default to rest (the generator may shift them to
-        auto-regulate, but should keep the same count).
+        Weekday names that default to rest.
     long_run_day : str
         Preferred weekday for the week's long/endurance run.
-    model : str
-        Anthropic model id used to generate each week.
     recent_window_days : int
-        How many days of recent training to summarize into the prompt.
+        Retained for compatibility; recent Garmin data no longer feeds generation
+        (the athlete self-regulates recovery on the day).
     secondary_goal : str
-        The parallel goal trained alongside the target race (e.g. "21k").
+        The parallel goal trained alongside the races (e.g. "21k").
     goal_weighting : str
-        How to balance the target race and the secondary goal — "equal" or
+        How to balance the race and the secondary goal — "equal" or
         "race_priority". "equal" splits running quality and race-specific work
-        roughly 50/50; "race_priority" biases toward the target race.
+        roughly 50/50; "race_priority" biases toward the race.
     gym_access : str
         Equipment availability — "full" enables heavy barbell and plyometric
         prescriptions, not just bodyweight/station circuits.
     base_weekly_km : float
         The athlete's normal base weekly running volume (km). Phase-scaled into a
         weekly-km target so runs are prescribed by volume, not arbitrary minutes.
-        Held near base year-round for the undated 21k (standing readiness); only
-        the race-week taper cuts it hard.
+        Held near base year-round for the undated 21k (standing readiness).
     """
 
-    target_race: str
-    race_date: date
+    races: tuple[Race, ...]
+    block_weeks: int
+    pre_race_freshen_days: int
+    post_race_recovery_days: int
     sessions_per_week: int
     runs_per_week: int
     strength_per_week: int
     rest_days: tuple[str, ...]
     long_run_day: str
-    model: str
     recent_window_days: int
     secondary_goal: str
     goal_weighting: str
@@ -107,10 +135,12 @@ HYROX_STANDARDS: dict[str, str] = {
     "rowing": "1000 m",
     "burpee_broad_jump": "bodyweight, 80 m",
 }
-# Known athlete capacities (update as they report feeling too light/heavy). Barbell
-# lifts are prescribed by RPE until working weights are provided.
+# Known athlete capacities — the current working weights the athlete confirmed
+# training on (2026-07-17, re-confirmed in use 2026-07-20). Prescribe barbell
+# lifts from these by RPE and progress the load whenever a top set leaves >2 reps
+# in reserve. Update here as the athlete reports feeling too light/heavy.
 ATHLETE_LOADS: dict[str, str] = {
-    "back_squat": "100 kg last used for triples; likely light — progress to RPE 8 (~110+ kg)",
+    "back_squat": "100 kg for triples @ RPE ~8 (progress when >2 RIR)",
     "trap_bar_deadlift": "130 kg for top triples @ RPE 8",
     "hip_thrust": "110 kg for 6-8 reps",
     "weighted_step_up": "20 kg per hand",
@@ -131,17 +161,24 @@ STRENGTH_TEMPLATE = (
 )
 
 
-# Current target: Hyrox on 2026-08-02. 6 training days/week (4 runs + 2 strength),
-# Friday rest, long run on Sunday. Swap RACE_DATE/target_race to re-point at a 21k.
+# Race calendar: two Hyrox races (2026-08-02, then 2026-11-14) plus a standing
+# 21k. 6 training days/week (4 runs + 2 strength), Sunday rest, long run Saturday.
+# Blocks span 4 weeks; a race week freshens over its final 3 days; the week after
+# a race opens with a single recovery day, then trains through. Add/edit races to
+# re-point the whole engine — no other change needed.
 DEFAULT_CONFIG = PlanConfig(
-    target_race="hyrox",
-    race_date=date(2026, 8, 2),
+    races=(
+        Race(name="hyrox", date=date(2026, 8, 2)),
+        Race(name="hyrox", date=date(2026, 11, 14)),
+    ),
+    block_weeks=4,
+    pre_race_freshen_days=3,
+    post_race_recovery_days=1,
     sessions_per_week=6,
     runs_per_week=4,
     strength_per_week=2,
-    rest_days=("Friday",),
-    long_run_day="Sunday",
-    model="claude-sonnet-4-6",
+    rest_days=("Sunday",),
+    long_run_day="Saturday",
     recent_window_days=28,
     secondary_goal="21k",
     goal_weighting="equal",

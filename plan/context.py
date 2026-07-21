@@ -1,10 +1,14 @@
-"""Gather the data brief for the weekly plan generation.
+"""Assemble the data brief for training-block generation.
 
 No LLM API is called here. This script assembles everything a Claude Code agent
-(driven by ``/loop`` or ``/schedule``) needs to write the upcoming week: the
-deterministic periodization phase, the lactate-anchored zones, a summary of
-recent training and recovery, and the guardrails. The agent reads this brief,
-writes a ``PlannedWeek`` JSON file, then runs ``plan.persist`` to save it.
+(driven on demand) needs to write the upcoming multi-week block: the
+deterministic per-week periodization, the lactate-anchored zones, the athlete's
+known loads, and the guardrails. The agent reads this brief, writes a
+``PlannedBlock`` JSON file, then runs ``plan.persist`` to validate and save it.
+
+Recent Garmin training/recovery data is deliberately NOT part of the brief — the
+athlete self-regulates recovery on the day. Generation depends only on the race
+calendar, the measured zones, and the configured availability.
 
 Run with ``python -m plan.context`` to print the brief.
 """
@@ -14,14 +18,13 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 from dotenv import load_dotenv
 
-from dashboard import metrics, query
+from dashboard import query
 from plan import phase
 from plan.config import (
     ATHLETE_LOADS,
@@ -40,173 +43,125 @@ logger = logging.getLogger(__name__)
 _PROJECT_ROOT = Path(__file__).parent.parent
 load_dotenv(_PROJECT_ROOT / ".env", override=True)
 
-PLAN_FILE = _PROJECT_ROOT / "data" / "plan_week.json"
+PLAN_FILE = _PROJECT_ROOT / "data" / "plan_block.json"
 
 
 @dataclass(frozen=True)
-class ContextBundle:
-    """Everything needed to generate and later persist a plan week.
+class WeekContext:
+    """Deterministic periodization metadata for one week of a block.
+
+    Parameters
+    ----------
+    week_start : datetime.date
+        Monday of the week.
+    phase_name : str
+        Periodization phase (base/build/peak/off) against the next race.
+    weeks_remaining : int
+        Whole weeks from this week to the next race (0 if none upcoming).
+    race_name : str or None
+        Name of the next race, or ``None`` when no race is upcoming.
+    race_date : datetime.date or None
+        Date of the next race, or ``None``.
+    is_race_week : bool
+        Whether the next race falls within this week.
+    is_post_race_recovery : bool
+        Whether a race fell in the seven days before this week.
+    weekly_km_band : tuple of float
+        Phase-scaled weekly running-volume target (km).
+    """
+
+    week_start: date
+    phase_name: str
+    weeks_remaining: int
+    race_name: str | None
+    race_date: date | None
+    is_race_week: bool
+    is_post_race_recovery: bool
+    weekly_km_band: tuple[float, float]
+
+
+@dataclass(frozen=True)
+class BlockContext:
+    """Everything needed to generate and later persist a training block.
 
     Parameters
     ----------
     cfg : PlanConfig
         The active plan configuration.
-    week_start : datetime.date
-        Monday of the week being planned.
-    phase_name : str
-        Deterministic periodization phase.
-    weeks_remaining : int
-        Whole weeks until the race.
-    load_band : tuple of float
-        ACWR-bounded weekly training-load target (already recovery-scaled).
-    load_scaler : float
-        Recovery multiplier applied to the load band (1.0 = no cut).
-    weekly_km_band : tuple of float
-        Phase-scaled weekly running-volume target (km).
-    summary : dict
-        Recent training and recovery snapshot (the audit input).
+    weeks : list of WeekContext
+        Per-week deterministic periodization, first week first.
     zones : pandas.DataFrame
         Lactate-anchored training zones.
     """
 
     cfg: PlanConfig
-    week_start: date
-    phase_name: str
-    weeks_remaining: int
-    load_band: tuple[float, float]
-    load_scaler: float
-    weekly_km_band: tuple[float, float]
-    summary: dict[str, Any]
+    weeks: list[WeekContext]
     zones: pd.DataFrame
 
-
-def _recent_summary(
-    activities: pd.DataFrame,
-    load_series: pd.DataFrame,
-    snapshot: metrics.ReadinessSnapshot,
-    readiness: pd.DataFrame,
-    window_days: int,
-) -> dict[str, Any]:
-    """Summarize recent training and recovery into a compact, auditable dict."""
-    acwr = round(snapshot.atl / snapshot.ctl, 2) if snapshot.ctl > 0 else None
-    cutoff = pd.Timestamp(snapshot.date) - pd.Timedelta(days=window_days)
-    recent = load_series[load_series.index >= cutoff]
-    last7 = load_series[load_series.index >= pd.Timestamp(snapshot.date) - pd.Timedelta(days=7)]
-
-    sessions: list[dict[str, Any]] = []
-    if not activities.empty:
-        act = activities.copy()
-        act["d"] = pd.to_datetime(act["start_time_local"]).dt.normalize()
-        act = act[act["d"] >= cutoff].sort_values("d")
-        for r in act.itertuples():
-            sessions.append(
-                {
-                    "date": r.d.date().isoformat(),
-                    "type": r.activity_type,
-                    "name": r.activity_name,
-                    "load": None if pd.isna(r.training_load) else round(float(r.training_load)),
-                }
-            )
-
-    latest_readiness: dict[str, Any] = {}
-    readiness_trend: list[dict[str, Any]] = []
-    if not readiness.empty:
-        # Garmin writes several readiness snapshots per day, and they swing
-        # wildly because each one re-baselines after a workout. Collapse to one
-        # representative value per day - the morning (earliest) reading, which
-        # is the actionable metric Garmin surfaces - then report the recent
-        # trend so auto-regulation sees the trajectory, not a single snapshot.
-        daily = readiness.sort_values("ts").groupby("date", as_index=False).first()
-        daily = daily.sort_values("date")
-        for r in daily.tail(10).itertuples():
-            readiness_trend.append(
-                {
-                    "date": str(r.date),
-                    "score": None if pd.isna(r.score) else int(r.score),
-                    "level": r.level,
-                }
-            )
-        rd = daily.iloc[-1]
-        latest_readiness = {
-            "date": str(rd.get("date")),
-            "score": None if pd.isna(rd.get("score")) else int(rd["score"]),
-            "level": rd.get("level"),
-            "recovery_time_h": None
-            if pd.isna(rd.get("recovery_time_h"))
-            else round(float(rd["recovery_time_h"]), 1),
-        }
-
-    return {
-        "as_of": snapshot.date.date().isoformat(),
-        "ctl_fitness": snapshot.ctl,
-        "atl_fatigue": snapshot.atl,
-        "tsb_form": snapshot.tsb,
-        "tsb_label": snapshot.tsb_label,
-        "acwr": acwr,
-        "load_last_7d": round(float(last7["load"].sum())),
-        f"load_last_{window_days}d": round(float(recent["load"].sum())),
-        f"training_days_last_{window_days}d": int((recent["load"] > 0).sum()),
-        "hrv_last_night": snapshot.hrv_night,
-        "hrv_status": snapshot.hrv_status,
-        "readiness": latest_readiness,
-        "readiness_trend": readiness_trend,
-        "recent_sessions": sessions,
-    }
+    @property
+    def block_start(self) -> date:
+        """Monday of the block's first week."""
+        return self.weeks[0].week_start
 
 
-def gather(cfg: PlanConfig = DEFAULT_CONFIG) -> ContextBundle:
-    """Pull recent data and compute the deterministic plan context.
+def _week_context(week_start: date, cfg: PlanConfig) -> WeekContext:
+    """Compute the deterministic periodization metadata for a single week."""
+    race = phase.next_race(week_start, cfg.races)
+    if race is not None:
+        phase_name, remaining = phase.phase_for_week(week_start, race.date)
+    else:
+        phase_name, remaining = "off", 0
+    return WeekContext(
+        week_start=week_start,
+        phase_name=phase_name,
+        weeks_remaining=remaining,
+        race_name=race.name if race else None,
+        race_date=race.date if race else None,
+        is_race_week=phase.is_race_week(week_start, race),
+        is_post_race_recovery=phase.is_post_race_recovery_week(week_start, cfg.races),
+        weekly_km_band=phase.weekly_km_target(cfg.base_weekly_km, phase_name),
+    )
+
+
+def compute_block(cfg: PlanConfig = DEFAULT_CONFIG) -> list[WeekContext]:
+    """Compute the per-week periodization for the upcoming block (no I/O).
+
+    The block starts on the upcoming Monday and runs ``cfg.block_weeks`` weeks,
+    flowing across any race in between (the next-race lookup shifts week by week).
 
     Parameters
     ----------
     cfg : PlanConfig
-        Plan configuration (race date, availability, etc.).
+        Plan configuration (race calendar, block length, availability).
 
     Returns
     -------
-    ContextBundle
-        The computed phase/load context plus recent-data summary and zones.
+    list of WeekContext
+        One entry per week of the block, in chronological order.
+    """
+    block_start = phase.upcoming_monday(date.today())
+    return [
+        _week_context(block_start + timedelta(days=7 * i), cfg)
+        for i in range(cfg.block_weeks)
+    ]
+
+
+def gather(cfg: PlanConfig = DEFAULT_CONFIG) -> BlockContext:
+    """Compute the block context and pull the measured zones.
+
+    Parameters
+    ----------
+    cfg : PlanConfig
+        Plan configuration.
+
+    Returns
+    -------
+    BlockContext
+        Per-week periodization plus the lactate-anchored zones.
     """
     supabase = query.get_supabase_client()
-    activities = query.fetch_activities(supabase)
-    if activities.empty:
-        raise RuntimeError("No activities available; cannot build plan context")
-
-    readiness = query.fetch_readiness(supabase)
     zones = query.fetch_training_zones(supabase)
-    hrv_series = metrics.build_hrv_series(query.fetch_hrv(supabase))
-    load_series = metrics.build_load_series(activities)
-    snapshot = metrics.latest_snapshot(load_series, hrv_series)
-
-    week_start = phase.upcoming_monday(date.today())
-    phase_name, weeks_remaining = phase.phase_for_week(week_start, cfg.race_date)
-    summary = _recent_summary(activities, load_series, snapshot, readiness, cfg.recent_window_days)
-
-    hrv_baseline_low = None
-    if not hrv_series.empty and pd.notna(hrv_series.iloc[-1].get("baseline_low")):
-        hrv_baseline_low = float(hrv_series.iloc[-1]["baseline_low"])
-    readiness_scores = [t["score"] for t in summary["readiness_trend"] if t["score"] is not None]
-    load_scaler = phase.recovery_scaler(
-        readiness_scores=readiness_scores,
-        hrv_status=snapshot.hrv_status,
-        hrv_night=snapshot.hrv_night,
-        hrv_baseline_low=hrv_baseline_low,
-        tsb=snapshot.tsb,
-    )
-    load_band = phase.load_target_band(snapshot.ctl * 7.0, phase_name, scaler=load_scaler)
-    weekly_km_band = phase.weekly_km_target(cfg.base_weekly_km, phase_name)
-
-    return ContextBundle(
-        cfg=cfg,
-        week_start=week_start,
-        phase_name=phase_name,
-        weeks_remaining=weeks_remaining,
-        load_band=load_band,
-        load_scaler=load_scaler,
-        weekly_km_band=weekly_km_band,
-        summary=summary,
-        zones=zones,
-    )
+    return BlockContext(cfg=cfg, weeks=compute_block(cfg), zones=zones)
 
 
 def _format_zones(zones: pd.DataFrame) -> str:
@@ -215,25 +170,55 @@ def _format_zones(zones: pd.DataFrame) -> str:
         return "  (no zones — run plan.zones first)"
     lines = []
     for z in zones.sort_values("zone_index").itertuples():
-        hr = f"{z.hr_low or '<'}–{z.hr_high or '>'} bpm"
+        lo = "" if pd.isna(z.hr_low) else int(z.hr_low)
+        hi = "" if pd.isna(z.hr_high) else int(z.hr_high)
+        hr = f"{lo or '<'}–{hi or '>'} bpm"
         pace = f"{seconds_to_pace(z.pace_low_s_per_km)}–{seconds_to_pace(z.pace_high_s_per_km)} /km"
         lines.append(f"  Z{z.zone_index} {z.zone_name}: HR {hr}, pace {pace}")
     return "\n".join(lines)
 
 
-def render_brief(bundle: ContextBundle) -> str:
-    """Render the human/agent-readable generation brief.
+def _format_week_plan(w: WeekContext, cfg: PlanConfig) -> str:
+    """Render one week's periodization line, with any race-week / recovery note."""
+    end = w.week_start + timedelta(days=6)
+    header = (
+        f"  WEEK of {w.week_start.isoformat()}..{end.isoformat()} — "
+        f"phase {w.phase_name.upper()}"
+    )
+    if w.race_name and w.race_date:
+        header += f", next race {w.race_name} {w.race_date.isoformat()} ({w.weeks_remaining} wk)"
+    else:
+        header += ", no upcoming race (maintenance)"
+    header += f"\n    weekly running volume target: {w.weekly_km_band[0]}–{w.weekly_km_band[1]} km"
+
+    if w.is_race_week and w.race_date:
+        header += (
+            f"\n    >> RACE WEEK: race on {w.race_date.strftime('%A %d %b')}. Train normally "
+            f"early, then FRESHEN the final {cfg.pre_race_freshen_days} days — cut volume, keep "
+            f"a short race-pace opener, no heavy/exhausting work. Do NOT taper the whole week."
+        )
+    if w.is_post_race_recovery:
+        header += (
+            f"\n    >> POST-RACE: open with {cfg.post_race_recovery_days} easy recovery day(s) "
+            f"only, then train through in-band for the rest of the week (the athlete prefers "
+            f"this to a full recovery week)."
+        )
+    return header
+
+
+def render_brief(bundle: BlockContext) -> str:
+    """Render the human/agent-readable block-generation brief.
 
     Parameters
     ----------
-    bundle : ContextBundle
+    bundle : BlockContext
         Output of :func:`gather`.
 
     Returns
     -------
     str
-        The full brief: role, periodization, zones, recent data, guardrails, and
-        the exact JSON shape to write to ``data/plan_week.json``.
+        The full brief: role, per-week periodization, zones, loads, guardrails,
+        and the exact JSON shape to write to ``data/plan_block.json``.
     """
     cfg = bundle.cfg
     lt1_note = ""
@@ -243,12 +228,17 @@ def render_brief(bundle: ContextBundle) -> str:
             "easy (well below the Z2 ceiling)."
         )
 
-    schema_example = {
-        "rationale": "2-4 sentences: how this week reflects the phase, recent load/recovery, "
-        "and any auto-regulation applied.",
+    race_line = "; ".join(f"{r.name} {r.date.isoformat()}" for r in cfg.races)
+    week_blocks = "\n".join(_format_week_plan(w, cfg) for w in bundle.weeks)
+    n_weeks = len(bundle.weeks)
+
+    week_example = {
+        "rationale": "2-4 sentences: how this week reflects its phase and any race-week "
+        "freshen or post-race recovery. The athlete self-regulates recovery — do not cite "
+        "Garmin readiness/HRV/CTL.",
         "methodology": "3-5 sentences naming the principles applied (polarized easy volume, "
         "threshold to raise LT2, heavy/explosive strength for economy kept off hard-run days, "
-        "gradual load, taper near race). Principles only — no invented citations.",
+        "gradual load, freshen before a race). Principles only — no invented citations.",
         "sessions": [
             {
                 "day": "Monday",
@@ -268,48 +258,40 @@ def render_brief(bundle: ContextBundle) -> str:
                     {"phase": "main", "kind": "rest", "metric": "2:30 jog recovery",
                      "target": "easy", "load": None},
                     {"phase": "main", "kind": "station", "metric": "sled push 4x12.5 m",
-                     "target": "then 90s walk", "load": "~150 kg"},
+                     "target": "then 90s walk", "load": "202 kg"},
                     {"phase": "cooldown", "kind": "run", "metric": "10 min easy",
                      "target": "or slower", "load": None},
                 ],
                 "purpose": "One sentence on the training purpose.",
                 "why": "Why this session at this dose today, and why not more — tied to a "
-                "principle (e.g. 'threshold raises LT2; only one hard run today to stay polarized "
-                "and protect recovery').",
+                "principle (e.g. 'threshold raises LT2; only one hard run today to stay polarized').",
                 "hyrox_focus": "compromised running | sled | wall balls | ... | null",
             }
         ],
     }
+    schema_example = {"weeks": [f"<PlannedWeek for each of the {n_weeks} weeks, first week first>", "..."]}
 
     return f"""You are an expert coach for a HYBRID endurance athlete. Write a threshold-centric, \
-lactate-anchored training week grounded in hybrid/concurrent-training science (the deep evidence \
-base; Hyrox-specific research is still thin). Optimize EQUALLY for {cfg.target_race.upper()} \
-(compromised running + strength-endurance across 8 stations) and {cfg.secondary_goal} running; \
-the shared lever is raising LT2 and aerobic base. Apply the principles: mostly-easy polarized \
-volume, sparing high-quality threshold work, heavy/explosive strength for running economy, and \
-gradual load progression. The weekly-load band below is ALREADY recovery-scaled, so honor it rather \
-than re-cutting. When you back off, cut VOLUME and the number/stacking of hard days — never dilute the \
-intensity of a hard session you keep (protect the hard, protect the easy, kill the grey zone). Anchor \
-every run to the measured zones below — never generic %HRmax.
+lactate-anchored {n_weeks}-WEEK TRAINING BLOCK grounded in hybrid/concurrent-training science (the deep \
+evidence base; Hyrox-specific research is still thin). Optimize EQUALLY for HYROX (compromised running + \
+strength-endurance across 8 stations) and {cfg.secondary_goal} running; the shared lever is raising LT2 \
+and aerobic base. Apply the principles: mostly-easy polarized volume, sparing high-quality threshold \
+work, heavy/explosive strength for running economy, and gradual load progression. Anchor every run to \
+the measured zones below — never generic %HRmax. Protect the hard, protect the easy, kill the grey zone.
 
-TARGET: {cfg.target_race.upper()} on {cfg.race_date.isoformat()} | parallel goal: {cfg.secondary_goal} \
-| weighting: {cfg.goal_weighting}
-WEEK TO PLAN: Monday {bundle.week_start.isoformat()}
+The athlete SELF-REGULATES recovery on the day (err high — rather over- than under-train, take on-the-day
+outs rather than pre-cutting). Do NOT auto-regulate off Garmin readiness/HRV/CTL — none is provided.
 
-PERIODIZATION (deterministic — do not override):
-  Phase: {bundle.phase_name}   Weeks to race: {bundle.weeks_remaining}
-  Weekly training-load target band: {int(bundle.load_band[0])}–{int(bundle.load_band[1])} (Garmin units)\
-{f" [recovery-scaled x{bundle.load_scaler}]" if bundle.load_scaler < 1.0 else ""}
-  Weekly running-volume target: {bundle.weekly_km_band[0]}–{bundle.weekly_km_band[1]} km — prescribe runs \
-to hit this; easy runs carry the volume (strength/stations don't count toward km).
+RACE CALENDAR: {race_line} | parallel goal: {cfg.secondary_goal} | weighting: {cfg.goal_weighting}
+BLOCK TO PLAN: {n_weeks} weeks, {bundle.block_start.isoformat()} onward.
 
-LACTATE-ANCHORED ZONES:
+PERIODIZATION (deterministic — do not override), week by week:
+{week_blocks}
+
+LACTATE-ANCHORED ZONES (shared across the block):
 {_format_zones(bundle.zones)}{lt1_note}
 
-RECENT TRAINING & RECOVERY (auto-regulate off this):
-{json.dumps(bundle.summary, indent=2)}
-
-AVAILABILITY & STRUCTURE:
+AVAILABILITY & STRUCTURE (every week):
   {cfg.sessions_per_week} sessions/week: ~{cfg.runs_per_week} runs + ~{cfg.strength_per_week} \
 strength/functional; the rest are rest days.
   Default rest day(s): {", ".join(cfg.rest_days)}. Long/endurance run on {cfg.long_run_day}.
@@ -323,24 +305,24 @@ LOADS ({HYROX_DIVISION}) — prescribe station work AT these competition standar
   Known athlete capacity: {"; ".join(f"{k} {v}" for k, v in ATHLETE_LOADS.items())}.
   STRENGTH STRUCTURE (evidence-based): {STRENGTH_TEMPLATE}
 
-GUARDRAILS:
-  - Exactly 7 entries, one per weekday Monday..Sunday (use session_type "rest" for rest days).
+GUARDRAILS (apply to EVERY week of the block):
+  - Each week has exactly 7 entries, one per weekday Monday..Sunday (use session_type "rest" for rest days).
   - Keep "hard" days separated by >= 1 easy or rest day.
   - Weight the two goals EQUALLY: balance pure running quality (threshold, long run, economy) with
-    Hyrox-specific work (compromised running, stations) roughly 50/50 across the week.
-  - Use the full gym: at least one strength session should include heavy compound or explosive
+    Hyrox-specific work (compromised running, stations) roughly 50/50 across each week.
+  - Use the full gym: at least one strength session per week includes heavy compound or explosive
     lifts (squat, trap-bar deadlift, hip thrust, jumps) for running economy and sled power.
   - Keep explosive/plyometric strength OFF hard-run days (same-session concurrent training blunts
     power) — schedule it on an easy-run or standalone strength day.
-  - Hit BOTH the weekly-load band and the weekly-km target; easy runs carry the km. Judge strength by
-    load + RIR, not HR/Garmin load (it under-reads lifting), and prescribe concrete kg from the loads above.
+  - Hit the weekly-km target; easy runs carry the km (strength/stations don't count toward km). Judge
+    strength by load + RIR, not HR, and prescribe concrete kg from the loads above.
   - Double sessions are welcome, but a double day = exactly one GYM session + one NO-GYM session (run or
-    bodyweight); gym is available any day but only ONCE per day. Never schedule two gym sessions in a day.
+    bodyweight); never schedule two gym sessions in a day.
   - Never place two low-intensity-FEEL days back to back (e.g. a heavy low-rep lift immediately before an
     easy run) — pair heavy strength with a hard run to make a clean hard day, keep the easy days cleanly easy.
-  - In build/peak include >= 1 compromised-running session and >= 1 station/strength-endurance session.
-  - The load band is already recovery-scaled; if readiness trend is low or TSB strongly negative, cut the
-    hardest session's VOLUME (or drop a hard day) rather than watering its intensity down, and say so.
+  - In build/peak weeks include >= 1 compromised-running session and >= 1 station/strength-endurance session.
+  - Respect the per-week RACE WEEK and POST-RACE notes above where present (freshen the final days before a
+    race; open a post-race week with the stated recovery day(s), then train through).
   - STEPS = typed segments rendered as Runna-style rows. Each segment has: phase (warmup/main/
     cooldown, or null), kind (run/rest/station/strength/note), metric (the bold dose), target
     (sub-line: HR/pace/effort or a note), load (kg for station/strength, else null). List a repeated
@@ -348,22 +330,24 @@ GUARDRAILS:
     compromised-running sim, alternate run segments and station segments (with load), each round.
     Leave `steps` empty ([]) only for a trivial single-effort session; always also fill the one-line
     `prescription` as a fallback.
-  - DETAIL & CONSISTENCY: be explicit and unambiguous. State the exact number of rounds/sets/reps —
-    never leave the reader guessing how many times to repeat a block. `distance_m` and `duration_min`
-    MUST equal the sum across the steps (e.g. 4 rounds x 1 km run => distance_m = 4000, not 8000).
+  - DETAIL & CONSISTENCY: be explicit and unambiguous. State the exact number of rounds/sets/reps.
+    `distance_m` and `duration_min` MUST equal the sum across the steps.
   - LOADS: give a concrete weight for every strength/station movement — station work at the Hyrox
-    division standard above, barbell lifts by RPE. State reps and rest. Never write a loadless
-    "sled push" or "wall balls" without the kg.
+    division standard above, barbell lifts by RPE. State reps and rest. Never write a loadless station.
   - Fill `why` for every session (the justification AND the trade-off — why not more), and the
     week-level `methodology` (principles only). Do NOT invent citations; sources are curated separately.
 
-OUTPUT: write JSON matching this shape to {PLAN_FILE}, then run `python -m plan.persist`:
+OUTPUT: write JSON matching this shape to {PLAN_FILE}, then run `python -m plan.persist`. The top level is
+a PlannedBlock with a `weeks` list of {n_weeks} PlannedWeek objects (first week first). Each PlannedWeek is:
+{json.dumps(week_example, indent=2)}
+
+...wrapped as:
 {json.dumps(schema_example, indent=2)}
 """
 
 
 def main() -> None:
-    """Print the generation brief to stdout."""
+    """Print the block-generation brief to stdout."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     print(render_brief(gather()))
 

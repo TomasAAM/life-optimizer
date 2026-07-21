@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from plan import phase
+from plan.config import Race
 
 
 def test_weeks_to_race_six_weeks_out() -> None:
@@ -25,63 +26,59 @@ def test_phase_for_week_hyrox_build() -> None:
 
 
 def test_phase_boundaries() -> None:
+    # Collapsed to base/build/peak (+off). No standalone taper phase — the
+    # pre-race freshen is a within-week refinement, not a phase.
     assert phase.classify_phase(10) == "base"
-    assert phase.classify_phase(6) == "build"
+    assert phase.classify_phase(9) == "base"
+    assert phase.classify_phase(8) == "build"
+    assert phase.classify_phase(4) == "build"
     assert phase.classify_phase(3) == "peak"
-    assert phase.classify_phase(2) == "taper"
-    assert phase.classify_phase(1) == "taper"
+    assert phase.classify_phase(1) == "peak"
     assert phase.classify_phase(0) == "off"
 
 
-def test_load_target_band_taper_cuts_volume() -> None:
-    build_low, build_high = phase.load_target_band(700.0, "build")
-    taper_low, taper_high = phase.load_target_band(700.0, "taper")
-    assert taper_high < build_low  # taper band sits clearly below build
+def test_next_race_picks_earliest_upcoming() -> None:
+    races = (Race("hyrox", date(2026, 8, 2)), Race("hyrox", date(2026, 11, 14)))
+    # Before the first race -> first race.
+    assert phase.next_race(date(2026, 7, 20), races).date == date(2026, 8, 2)
+    # After the first race -> second race.
+    assert phase.next_race(date(2026, 8, 3), races).date == date(2026, 11, 14)
+    # After the last race -> None.
+    assert phase.next_race(date(2026, 11, 16), races) is None
 
 
-def test_recovery_scaler_fresh_no_cut() -> None:
-    # Fresh athlete (high readiness trend, balanced HRV, positive form) -> no cut.
-    s = phase.recovery_scaler([70, 80, 90, 85, 95], "BALANCED", 55.0, 45.0, 20.0)
-    assert s == 1.0
+def test_next_race_within_week_still_upcoming() -> None:
+    races = (Race("hyrox", date(2026, 8, 2)),)
+    # Monday of race week (race is that Sunday) -> the race is still upcoming.
+    assert phase.next_race(date(2026, 7, 27), races).date == date(2026, 8, 2)
 
 
-def test_recovery_scaler_gentle_trim() -> None:
-    # Mildly suppressed readiness only -> a small 5% trim, nothing dramatic.
-    s = phase.recovery_scaler([59, 59, 59], "BALANCED", 55.0, 45.0, 0.0)
-    assert s == 0.95
+def test_is_race_week() -> None:
+    race = Race("hyrox", date(2026, 8, 2))  # a Sunday
+    assert phase.is_race_week(date(2026, 7, 27), race) is True  # Mon-Sun contains it
+    assert phase.is_race_week(date(2026, 7, 20), race) is False  # week before
+    assert phase.is_race_week(date(2026, 8, 3), race) is False  # week after
+    assert phase.is_race_week(date(2026, 7, 27), None) is False
 
 
-def test_recovery_scaler_redflag_floor() -> None:
-    # Readiness tanked + HRV LOW + deep-negative TSB -> raw penalty below the
-    # red-flag floor, so it clamps at 0.75 (a real deload, but still bounded).
-    s = phase.recovery_scaler([30, 30, 30], "LOW", 40.0, 45.0, -30.0)
-    assert s == 0.75
+def test_is_post_race_recovery_week() -> None:
+    races = (Race("hyrox", date(2026, 8, 2)),)  # Sunday
+    # Week starting the day after the race -> post-race recovery.
+    assert phase.is_post_race_recovery_week(date(2026, 8, 3), races) is True
+    # The race week itself is not a post-race week.
+    assert phase.is_post_race_recovery_week(date(2026, 7, 27), races) is False
+    # Two weeks later -> no.
+    assert phase.is_post_race_recovery_week(date(2026, 8, 10), races) is False
 
 
-def test_recovery_scaler_unbalanced_is_direction_aware() -> None:
-    # UNBALANCED with night HRV ABOVE baseline low -> not a suppression, no cut.
-    assert phase.recovery_scaler([80, 80, 80], "UNBALANCED", 70.0, 45.0, 10.0) == 1.0
-    # UNBALANCED with night HRV at/below baseline low -> genuine dip, small cut.
-    assert phase.recovery_scaler([80, 80, 80], "UNBALANCED", 40.0, 45.0, 10.0) == 0.95
-
-
-def test_weekly_km_target_holds_base_but_off_cuts_hard() -> None:
+def test_weekly_km_target_holds_base_but_off_cuts() -> None:
     base_low, base_high = phase.weekly_km_target(50.0, "base")
-    taper_low, taper_high = phase.weekly_km_target(50.0, "taper")
+    peak_low, peak_high = phase.weekly_km_target(50.0, "peak")
     off_low, off_high = phase.weekly_km_target(50.0, "off")
     assert (base_low, base_high) == (45.0, 55.0)
-    assert taper_high < base_high  # taper trims volume
-    assert taper_low > 40.0  # ...but gently — the 21k base is protected
-    assert off_high < taper_low  # only the post-race off week cuts hard
-
-
-def test_load_target_band_scaler_and_acwr_ceiling() -> None:
-    full_high = phase.load_target_band(700.0, "peak", scaler=1.0)[1]
-    scaled_high = phase.load_target_band(700.0, "peak", scaler=0.85)[1]
-    assert scaled_high < full_high  # recovery scaler lowers the band
-    # Upper bound never exceeds the acute:chronic ceiling (1.25 * chronic).
-    for ph in ("base", "build", "peak"):
-        assert phase.load_target_band(700.0, ph)[1] <= round(700.0 * 1.25, 0)
+    assert peak_high < base_high  # peak trims volume slightly
+    assert peak_low > 40.0  # ...but gently — the 21k base is protected
+    assert off_high < peak_low  # maintenance/off cuts harder
 
 
 def test_upcoming_monday() -> None:
@@ -91,3 +88,10 @@ def test_upcoming_monday() -> None:
     assert phase.upcoming_monday(date(2026, 6, 24)) == date(2026, 6, 29)
     # 2026-06-28 (Sun) -> next day Monday.
     assert phase.upcoming_monday(date(2026, 6, 28)) == date(2026, 6, 29)
+
+
+def test_current_monday() -> None:
+    # Mid-week maps back to the Monday that already started.
+    assert phase.current_monday(date(2026, 6, 24)) == date(2026, 6, 22)
+    assert phase.current_monday(date(2026, 6, 22)) == date(2026, 6, 22)
+    assert phase.current_monday(date(2026, 6, 28)) == date(2026, 6, 22)  # Sunday

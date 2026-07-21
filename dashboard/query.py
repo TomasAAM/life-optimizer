@@ -134,23 +134,70 @@ def fetch_training_zones(supabase: Client) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def fetch_latest_plan_week(supabase: Client) -> dict | None:
-    """Fetch the most recently generated plan-week header.
+def fetch_current_plan_week(supabase: Client, today_iso: str) -> dict | None:
+    """Fetch the plan-week header for the week in progress.
+
+    Returns the most recent week whose Monday is on or before ``today`` (the week
+    currently being trained). Falls back to the earliest upcoming week when the
+    whole plan is still in the future, and to ``None`` when no plan exists.
+
+    Parameters
+    ----------
+    supabase : supabase.Client
+        Authenticated Supabase client.
+    today_iso : str
+        Today's date as an ISO string.
 
     Returns
     -------
     dict or None
-        The latest ``training_plan_weeks`` row, or ``None`` if no plan exists.
+        The current ``training_plan_weeks`` row, or ``None`` if no plan exists.
     """
-    result = (
+    current = (
         supabase.table("training_plan_weeks")
         .select("*")
+        .lte("week_start", today_iso)
         .order("week_start", desc=True)
         .limit(1)
         .execute()
     )
-    rows = result.data or []
+    if current.data:
+        return current.data[0]
+    upcoming = (
+        supabase.table("training_plan_weeks")
+        .select("*")
+        .order("week_start")
+        .limit(1)
+        .execute()
+    )
+    rows = upcoming.data or []
     return rows[0] if rows else None
+
+
+def fetch_plan_block(supabase: Client, from_week_iso: str) -> list[dict]:
+    """Fetch the plan-week headers from a given week onward (the current block).
+
+    Parameters
+    ----------
+    supabase : supabase.Client
+        Authenticated Supabase client.
+    from_week_iso : str
+        ISO date of the first week to include (its Monday).
+
+    Returns
+    -------
+    list of dict
+        ``training_plan_weeks`` rows with ``week_start >= from_week_iso``, ordered
+        chronologically.
+    """
+    result = (
+        supabase.table("training_plan_weeks")
+        .select("*")
+        .gte("week_start", from_week_iso)
+        .order("week_start")
+        .execute()
+    )
+    return result.data or []
 
 
 def fetch_planned_sessions(supabase: Client, week_start: str) -> pd.DataFrame:

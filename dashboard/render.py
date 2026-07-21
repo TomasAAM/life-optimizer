@@ -7,8 +7,8 @@ summary table. Plotly.js is loaded from a CDN to keep the committed file small.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from dataclasses import dataclass, field
+from datetime import date, datetime, timezone
 from html import escape
 
 import pandas as pd
@@ -17,7 +17,6 @@ from plotly.subplots import make_subplots
 
 from dashboard import zones
 from dashboard.metrics import CTL_WARMUP_DAYS, ReadinessSnapshot
-from plan import phase as plan_phase
 from plan.pace import seconds_to_pace
 
 _COLOR_CTL = "#2563eb"   # blue  - fitness
@@ -111,16 +110,21 @@ class PlanView:
     Parameters
     ----------
     week : dict or None
-        Latest ``training_plan_weeks`` row, or ``None`` when no plan exists yet.
+        The current ``training_plan_weeks`` row (week in progress), or ``None``
+        when no plan exists yet.
     sessions : pandas.DataFrame
-        Planned sessions for that week, with a ``status`` column.
+        Planned sessions for the current week, with a ``status`` column.
     zones : pandas.DataFrame
         Lactate-anchored training zones.
+    block : list of dict
+        The plan-week headers of the current block (from the current week onward),
+        for the block-overview strip.
     """
 
     week: dict | None
     sessions: pd.DataFrame
     zones: pd.DataFrame
+    block: list[dict] = field(default_factory=list)
 
 
 def build_figure(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> go.Figure:
@@ -331,23 +335,31 @@ def _clean_int(value) -> int | None:
     return int(value)
 
 
-def _phase_strip(race_date: date, current_week_start: date) -> str:
-    """Render a colored week-by-week periodization strip up to the race."""
+def _block_overview(block: list[dict], current_week_start: str) -> str:
+    """Render the current block as a colored week-by-week strip.
+
+    Each cell is one persisted plan week (date, phase, weeks-to-race); the week in
+    progress is outlined. Driven by the stored block rather than recomputed, so it
+    reflects exactly what was generated — including a block that flows across a race.
+    """
+    if not block:
+        return ""
     cells = []
-    week = current_week_start
-    guard = 0
-    while week <= race_date and guard < 40:
-        phase_name, _ = plan_phase.phase_for_week(week, race_date)
+    for wk in block:
+        week_start = date.fromisoformat(wk["week_start"])
+        phase_name = wk.get("phase") or ""
         color = _PHASE_COLOR.get(phase_name, "#94a3b8")
-        border = "2px solid #0f172a" if week == current_week_start else "1px solid #e2e8f0"
+        is_current = wk["week_start"] == current_week_start
+        border = "2px solid #0f172a" if is_current else "1px solid #e2e8f0"
+        wtr = wk.get("weeks_to_race")
+        sub = f"{wtr} wk to race" if wtr not in (None, 0) else escape(str(wk.get("target_race") or ""))
         cells.append(
             f'<div class="phase-cell" style="border:{border}">'
             f'<div class="phase-dot" style="background:{color}"></div>'
-            f'<div class="phase-wk">{week.strftime("%d %b")}</div>'
-            f'<div class="phase-name">{phase_name}</div></div>'
+            f'<div class="phase-wk">{week_start.strftime("%d %b")}</div>'
+            f'<div class="phase-name">{escape(phase_name)}</div>'
+            f'<div class="phase-sub">{sub}</div></div>'
         )
-        week += timedelta(days=7)
-        guard += 1
     return f'<div class="phase-strip">{"".join(cells)}</div>'
 
 
@@ -478,23 +490,32 @@ def _plan_section(plan: PlanView) -> str:
     if plan is None or plan.week is None:
         return (
             "<h2>Training plan</h2><div class='panel'><p>No plan generated yet — "
-            "run <code>python -m plan.generate</code>.</p></div>"
+            "run <code>python -m plan.context</code>, write the block, then "
+            "<code>python -m plan.persist</code>.</p></div>"
         )
 
     week = plan.week
-    race_date = date.fromisoformat(week["race_date"])
+    race_iso = week.get("race_date")
+    race_date = date.fromisoformat(race_iso) if race_iso else None
     week_start = date.fromisoformat(week["week_start"])
-    days_to = (race_date - date.today()).days
+    countdown = (
+        (f"{(race_date - date.today()).days}d", "until race day")
+        if race_date is not None else ("—", "no race scheduled")
+    )
+    block = plan.block or [week]
+    week_index = next(
+        (i + 1 for i, wk in enumerate(block) if wk["week_start"] == week["week_start"]), 1
+    )
 
     cards = [
-        ("Target race", week["target_race"].upper(), race_date.strftime("%d %b %Y")),
-        ("Countdown", f"{days_to}d", "until race day"),
-        ("Phase", week["phase"].title(), f"{week['weeks_to_race']} weeks to race"),
         (
-            "Load target",
-            f"{int(week['load_target_low'])}–{int(week['load_target_high'])}",
-            "weekly load band",
+            "Target race",
+            (week.get("target_race") or "none").upper(),
+            race_date.strftime("%d %b %Y") if race_date else "—",
         ),
+        ("Countdown", countdown[0], countdown[1]),
+        ("Phase", (week.get("phase") or "").title(), f"{week.get('weeks_to_race', 0)} weeks to race"),
+        ("Block", f"Week {week_index} of {len(block)}", "current training block"),
     ]
     card_html = "".join(
         f'<div class="card"><div class="card-label">{label}</div>'
@@ -517,8 +538,8 @@ def _plan_section(plan: PlanView) -> str:
     return f"""<h2>Training plan</h2>
   <div class="cards">{card_html}</div>
   <div class="panel">
-    <div class="section-label">Periodization</div>
-    {_phase_strip(race_date, week_start)}
+    <div class="section-label">This block</div>
+    {_block_overview(block, week["week_start"])}
   </div>
   <div class="panel">
     <div class="section-label">Week of {week_start.strftime('%d %b %Y')}</div>
@@ -617,6 +638,7 @@ def render_html(
   .phase-dot {{ width: 100%; height: 5px; border-radius: 3px; margin-bottom: 6px; }}
   .phase-wk {{ font-size: 0.78rem; font-weight: 600; }}
   .phase-name {{ font-size: 0.72rem; color: #64748b; text-transform: capitalize; }}
+  .phase-sub {{ font-size: 0.66rem; color: #94a3b8; margin-top: 2px; }}
   .plan-hint {{ font-size: 0.78rem; color: #94a3b8; margin: -2px 6px 12px; }}
   .sess-list {{ display: flex; flex-direction: column; gap: 8px; }}
   .sess {{ border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }}

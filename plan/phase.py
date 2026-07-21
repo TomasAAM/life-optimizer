@@ -1,64 +1,54 @@
 """Deterministic periodization logic.
 
 The phase a given week sits in is a pure function of how many weeks remain until
-the race — no model involved, so it is fully reproducible and unit-testable. The
-generator uses the phase to bias the week's structure and weekly-load target.
+the next race — no model involved, so it is fully reproducible and
+unit-testable. The generator uses the phase to bias the week's structure and the
+weekly running-volume target.
 
-Phase map (by whole weeks remaining until the race):
+Phase map (by whole weeks remaining until the next race):
 
-* ``>= 9``  base       — aerobic volume, build the engine
-* ``4..8``  build      — threshold + race-specific intensity
-* ``3``     peak        — highest specificity, race simulation
-* ``1..2``  taper       — cut volume, retain intensity, arrive fresh
-* ``<= 0``  off         — race done / transition
+* ``>= 9``  base   — aerobic volume, build the engine
+* ``4..8``  build  — threshold + race-specific intensity
+* ``1..3``  peak   — highest specificity, race simulation
+* ``<= 0``  off    — no upcoming race (post-race transition / maintenance)
+
+Two sub-week refinements are layered on top and handled in session design, not as
+phases of their own:
+
+* the **race week** (a race falls inside it) freshens over its final few days —
+  volume down, intensity kept (see :func:`is_race_week`);
+* the **week after a race** opens with a short recovery block before normal
+  training resumes (see :func:`is_post_race_recovery_week`).
 """
 
 from __future__ import annotations
 
 import math
-from datetime import date
+from datetime import date, timedelta
 
-# Weekly-load multipliers applied to the chronic (CTL-derived) weekly load to set
-# the target band for each phase. Taper deliberately drops volume.
-_PHASE_LOAD_MULT: dict[str, float] = {
-    "base": 1.00,
-    "build": 1.10,
-    "peak": 1.00,
-    "taper": 0.55,
-    "off": 0.30,
-}
+from plan.config import Race
 
-# Weekly running-volume (km) multipliers. Deliberately gentler than the load
-# multipliers: the undated 21k is a standing-readiness goal, so an aerobic-volume
-# floor is held year-round and only the race-week taper / post-race off week cut
-# mileage hard. Easy runs carry this volume (polarized).
+# Weekly running-volume (km) multipliers by phase. Deliberately gentle: the
+# undated 21k is a standing-readiness goal, so an aerobic-volume floor is held
+# year-round. Easy runs carry this volume (polarized). The race-week freshen and
+# post-race recovery are handled in session design, not here.
 _PHASE_KM_MULT: dict[str, float] = {
     "base": 1.00,
     "build": 1.05,
     "peak": 0.90,
-    "taper": 0.90,
-    "off": 0.50,
+    "off": 0.70,
 }
-
-# Recovery-based load scaler bounds. Gentle and err-high: default 1.0 (no cut),
-# only trims when recovery is genuinely suppressed. A firmer floor applies on a
-# red flag so a real hole still forces a deload.
-_SCALER_NORMAL_FLOOR = 0.85
-_SCALER_REDFLAG_FLOOR = 0.75
-# Upper acute:chronic ratio the weekly-load band may never exceed — a safety rail
-# against a rising-CTL ratchet quietly running the load away over a block.
-_ACWR_CEILING = 1.25
 
 
 def weeks_to_race(week_start: date, race_date: date) -> int:
-    """Whole weeks remaining from the start of a plan week to the race.
+    """Whole weeks remaining from the start of a plan week to a race.
 
     Parameters
     ----------
     week_start : datetime.date
         Monday of the plan week.
     race_date : datetime.date
-        Date of the target race.
+        Date of the race.
 
     Returns
     -------
@@ -84,33 +74,53 @@ def classify_phase(weeks_remaining: int) -> str:
     Parameters
     ----------
     weeks_remaining : int
-        Output of :func:`weeks_to_race`.
+        Output of :func:`weeks_to_race`, or 0 when no race is upcoming.
 
     Returns
     -------
     str
-        One of ``base``, ``build``, ``peak``, ``taper``, ``off``.
+        One of ``base``, ``build``, ``peak``, ``off``.
     """
     if weeks_remaining <= 0:
         return "off"
-    if weeks_remaining <= 2:
-        return "taper"
-    if weeks_remaining == 3:
+    if weeks_remaining <= 3:
         return "peak"
     if weeks_remaining <= 8:
         return "build"
     return "base"
 
 
+def next_race(week_start: date, races: tuple[Race, ...]) -> Race | None:
+    """Return the next race on or after a plan week.
+
+    A race whose day falls inside the plan week counts as upcoming for that week
+    (it is that week's race). Weeks after the final race return ``None``.
+
+    Parameters
+    ----------
+    week_start : datetime.date
+        Monday of the plan week.
+    races : tuple of Race
+        The race calendar, any order.
+
+    Returns
+    -------
+    Race or None
+        The earliest race with ``date >= week_start``, or ``None`` if none remain.
+    """
+    upcoming = sorted((r for r in races if r.date >= week_start), key=lambda r: r.date)
+    return upcoming[0] if upcoming else None
+
+
 def phase_for_week(week_start: date, race_date: date) -> tuple[str, int]:
-    """Return the phase and weeks-remaining for a plan week.
+    """Return the phase and weeks-remaining for a plan week against one race.
 
     Parameters
     ----------
     week_start : datetime.date
         Monday of the plan week.
     race_date : datetime.date
-        Date of the target race.
+        Date of the reference race.
 
     Returns
     -------
@@ -121,73 +131,47 @@ def phase_for_week(week_start: date, race_date: date) -> tuple[str, int]:
     return classify_phase(remaining), remaining
 
 
-def recovery_scaler(
-    readiness_scores: list[int],
-    hrv_status: str | None,
-    hrv_night: float | None,
-    hrv_baseline_low: float | None,
-    tsb: float,
-) -> float:
-    """Gentle, err-high recovery multiplier for the weekly-load band.
-
-    Defaults to 1.0 (no cut) and only *subtracts* when a recovery signal is
-    genuinely suppressed. Penalties are small so a normal down-week barely moves;
-    a firmer floor applies on a red flag (readiness trend in the tank, deep
-    negative TSB, or HRV LOW alongside a low readiness trend) so a real hole still
-    forces a deload. HRV UNBALANCED is direction-aware — only penalized when the
-    night value is at/below the baseline floor, since UNBALANCED can also mean
-    unusually high HRV.
+def is_race_week(week_start: date, race: Race | None) -> bool:
+    """True when a race falls within the seven days of this plan week.
 
     Parameters
     ----------
-    readiness_scores : list of int
-        Recent daily morning readiness scores (oldest to newest); the last 5 are
-        averaged.
-    hrv_status : str or None
-        Latest HRV status (BALANCED / UNBALANCED / LOW).
-    hrv_night : float or None
-        Latest nightly HRV.
-    hrv_baseline_low : float or None
-        Low edge of the HRV baseline.
-    tsb : float
-        Training-stress balance (form).
+    week_start : datetime.date
+        Monday of the plan week.
+    race : Race or None
+        The week's next race (from :func:`next_race`).
 
     Returns
     -------
-    float
-        Multiplier in [0.75, 1.0], rounded to 2 dp.
+    bool
+        Whether race day is Monday..Sunday of this week.
     """
-    penalty = 0.0
+    if race is None:
+        return False
+    return week_start <= race.date <= week_start + timedelta(days=6)
 
-    recent = [s for s in readiness_scores if s is not None][-5:]
-    rmean = sum(recent) / len(recent) if recent else None
-    if rmean is not None:
-        if rmean < 40:
-            penalty -= 0.15
-        elif rmean < 55:
-            penalty -= 0.10
-        elif rmean < 65:
-            penalty -= 0.05
 
-    status = (hrv_status or "").upper()
-    if status == "LOW":
-        penalty -= 0.10
-    elif status == "UNBALANCED":
-        if hrv_night is not None and hrv_baseline_low is not None and hrv_night <= hrv_baseline_low:
-            penalty -= 0.05
+def is_post_race_recovery_week(week_start: date, races: tuple[Race, ...]) -> bool:
+    """True when a race occurred in the seven days before this plan week.
 
-    if tsb < -25:
-        penalty -= 0.10
-    elif tsb < -10:
-        penalty -= 0.05
+    Such a week opens with a short recovery block (see
+    :attr:`plan.config.PlanConfig.post_race_recovery_days`) before normal training
+    resumes.
 
-    redflag = (
-        (rmean is not None and rmean < 40)
-        or tsb < -25
-        or (status == "LOW" and rmean is not None and rmean < 50)
-    )
-    floor = _SCALER_REDFLAG_FLOOR if redflag else _SCALER_NORMAL_FLOOR
-    return round(max(1.0 + penalty, floor), 2)
+    Parameters
+    ----------
+    week_start : datetime.date
+        Monday of the plan week.
+    races : tuple of Race
+        The race calendar.
+
+    Returns
+    -------
+    bool
+        Whether any race day fell in the seven days immediately before this week.
+    """
+    prior_week_start = week_start - timedelta(days=7)
+    return any(prior_week_start <= r.date < week_start for r in races)
 
 
 def weekly_km_target(base_weekly_km: float, phase: str) -> tuple[float, float]:
@@ -209,45 +193,11 @@ def weekly_km_target(base_weekly_km: float, phase: str) -> tuple[float, float]:
     return round(midpoint * 0.9, 1), round(midpoint * 1.1, 1)
 
 
-def load_target_band(
-    weekly_chronic_load: float, phase: str, scaler: float = 1.0
-) -> tuple[float, float]:
-    """Compute an ACWR-bounded weekly training-load target for a phase.
-
-    The midpoint is the chronic (CTL-derived) weekly load scaled by the phase
-    multiplier and the recovery ``scaler``; the band spans roughly an acute:chronic
-    ratio of 0.9 to 1.1 around that midpoint. The upper bound is additionally
-    capped at :data:`_ACWR_CEILING` times chronic so a rising-CTL ratchet cannot
-    run the load away over a block.
-
-    Parameters
-    ----------
-    weekly_chronic_load : float
-        Chronic training load expressed per week (CTL * 7).
-    phase : str
-        Phase label from :func:`classify_phase`.
-    scaler : float, optional
-        Recovery multiplier from :func:`recovery_scaler` (default 1.0 = no cut).
-
-    Returns
-    -------
-    tuple of (float, float)
-        Lower and upper weekly-load targets.
-    """
-    mult = _PHASE_LOAD_MULT.get(phase, 1.0)
-    midpoint = weekly_chronic_load * mult * scaler
-    lower = round(midpoint * 0.9, 0)
-    upper = round(midpoint * 1.1, 0)
-    upper = min(upper, round(weekly_chronic_load * _ACWR_CEILING, 0))
-    return min(lower, upper), upper
-
-
 def upcoming_monday(today: date) -> date:
     """Return the Monday of the week to plan for.
 
     If ``today`` is already a Monday, that day is returned; otherwise the next
-    Monday is returned. Run on the Sunday cron this yields the week about to
-    start; run mid-week (manual) it yields next week.
+    Monday is returned.
 
     Parameters
     ----------
@@ -261,3 +211,22 @@ def upcoming_monday(today: date) -> date:
     """
     days_ahead = (0 - today.weekday()) % 7
     return today if days_ahead == 0 else date.fromordinal(today.toordinal() + days_ahead)
+
+
+def current_monday(today: date) -> date:
+    """Return the Monday of the week that contains ``today``.
+
+    Unlike :func:`upcoming_monday`, a mid-week date maps back to the Monday that
+    already started — used by the dashboard to show the week in progress.
+
+    Parameters
+    ----------
+    today : datetime.date
+        Reference date.
+
+    Returns
+    -------
+    datetime.date
+        Monday of the current week.
+    """
+    return today - timedelta(days=today.weekday())
