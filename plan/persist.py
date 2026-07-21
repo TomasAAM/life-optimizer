@@ -1,9 +1,10 @@
-"""Persist a Claude-Code-generated weekly plan to Supabase.
+"""Persist a Claude-Code-generated training block to Supabase.
 
-Reads the ``PlannedWeek`` JSON the agent wrote (default ``data/plan_week.json``),
-validates it against the Pydantic schema, recomputes the deterministic week
-metadata (so the header is authoritative regardless of what the agent wrote),
-and upserts ``training_plan_weeks`` + ``planned_sessions``.
+Reads the ``PlannedBlock`` JSON the agent wrote (default ``data/plan_block.json``),
+validates it against the Pydantic schema, assigns each week its deterministic
+``week_start`` (block start + 7*i, recomputed here so dates are authoritative
+regardless of what the agent wrote), and upserts ``training_plan_weeks`` +
+``planned_sessions`` for every week in the block.
 
 Run with ``python -m plan.persist [path]``.
 """
@@ -19,7 +20,8 @@ from typing import Any
 from dashboard import query
 from plan import context
 from plan.config import DEFAULT_CONFIG, PlanConfig
-from plan.models import PlannedWeek
+from plan.context import WeekContext
+from plan.models import PlannedBlock, PlannedWeek
 
 logger = logging.getLogger(__name__)
 
@@ -60,36 +62,22 @@ def _to_rows(week: PlannedWeek, week_start: date) -> list[dict[str, Any]]:
     return rows
 
 
-def persist(path: Path, cfg: PlanConfig = DEFAULT_CONFIG) -> int:
-    """Validate and store the generated week.
-
-    Parameters
-    ----------
-    path : pathlib.Path
-        Path to the ``PlannedWeek`` JSON written by the agent.
-    cfg : PlanConfig
-        Plan configuration.
-
-    Returns
-    -------
-    int
-        Number of planned sessions written.
-    """
-    week = PlannedWeek.model_validate_json(path.read_text(encoding="utf-8"))
-    bundle = context.gather(cfg)
-    supabase = query.get_supabase_client()
-
+def _persist_week(supabase, week: PlannedWeek, wctx: WeekContext, cfg: PlanConfig) -> int:
+    """Upsert one week's header and its sessions; return the session count."""
+    week_start = wctx.week_start
     supabase.table("training_plan_weeks").upsert(
         {
-            "week_start": bundle.week_start.isoformat(),
-            "target_race": cfg.target_race,
-            "race_date": cfg.race_date.isoformat(),
-            "phase": bundle.phase_name,
-            "weeks_to_race": bundle.weeks_remaining,
-            "load_target_low": bundle.load_band[0],
-            "load_target_high": bundle.load_band[1],
+            "week_start": week_start.isoformat(),
+            "target_race": wctx.race_name or "none",
+            "race_date": wctx.race_date.isoformat() if wctx.race_date else None,
+            "phase": wctx.phase_name,
+            "weeks_to_race": wctx.weeks_remaining,
+            # Load band is intentionally null: volume is driven by the km target
+            # and session structure, not a Garmin-CTL-derived load band.
+            "load_target_low": None,
+            "load_target_high": None,
             "model": _GENERATOR,
-            "input_summary": bundle.summary,
+            "input_summary": None,
             "rationale": week.rationale,
             "methodology": week.methodology,
         },
@@ -97,22 +85,64 @@ def persist(path: Path, cfg: PlanConfig = DEFAULT_CONFIG) -> int:
     ).execute()
 
     supabase.table("planned_sessions").delete().eq(
-        "week_start", bundle.week_start.isoformat()
+        "week_start", week_start.isoformat()
     ).execute()
-    rows = _to_rows(week, bundle.week_start)
+    rows = _to_rows(week, week_start)
     supabase.table("planned_sessions").upsert(rows).execute()
-
-    logger.info("Persisted %d sessions for week %s", len(rows), bundle.week_start)
+    logger.info("  week %s (%s): %d sessions", week_start, wctx.phase_name, len(rows))
     return len(rows)
+
+
+def persist(path: Path, cfg: PlanConfig = DEFAULT_CONFIG) -> int:
+    """Validate and store a generated block.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Path to the ``PlannedBlock`` JSON written by the agent.
+    cfg : PlanConfig
+        Plan configuration.
+
+    Returns
+    -------
+    int
+        Total number of planned sessions written across the block.
+
+    Raises
+    ------
+    ValueError
+        If the block's week count does not match the configured block length.
+    """
+    block = PlannedBlock.model_validate_json(path.read_text(encoding="utf-8"))
+    meta = context.compute_block(cfg)
+    if len(block.weeks) != len(meta):
+        raise ValueError(
+            f"Block has {len(block.weeks)} weeks but the config expects {len(meta)} "
+            f"(block_weeks={cfg.block_weeks}). Regenerate to match."
+        )
+
+    supabase = query.get_supabase_client()
+    total = 0
+    for week, wctx in zip(block.weeks, meta):
+        total += _persist_week(supabase, week, wctx, cfg)
+
+    logger.info(
+        "Persisted %d sessions across %d weeks (%s..%s)",
+        total,
+        len(meta),
+        meta[0].week_start,
+        meta[-1].week_start,
+    )
+    return total
 
 
 def main() -> None:
     """Persist the plan JSON named on the command line (or the default path)."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-    parser = argparse.ArgumentParser(description="Persist a generated weekly plan.")
+    parser = argparse.ArgumentParser(description="Persist a generated training block.")
     parser.add_argument(
         "path", nargs="?", default=str(context.PLAN_FILE),
-        help="Path to the PlannedWeek JSON (default: data/plan_week.json)",
+        help="Path to the PlannedBlock JSON (default: data/plan_block.json)",
     )
     args = parser.parse_args()
     persist(Path(args.path))

@@ -7,11 +7,13 @@ report, and writes it to ``public/index.html`` for GitHub Pages.
 from __future__ import annotations
 
 import logging
+from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 from dashboard import metrics, query, render, zones
+from plan import phase
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 load_dotenv(_PROJECT_ROOT / ".env", override=True)
@@ -45,15 +47,18 @@ def _build_plan_view(supabase, activities) -> render.PlanView:
         View model consumed by :func:`dashboard.render.render_html`.
     """
     zones_df = query.fetch_training_zones(supabase)
-    week = query.fetch_latest_plan_week(supabase)
+    today = date.today()
+    week = query.fetch_current_plan_week(supabase, today.isoformat())
     if week is None:
         return render.PlanView(
-            week=None, sessions=query.fetch_planned_sessions(supabase, ""), zones=zones_df
+            week=None, sessions=query.fetch_planned_sessions(supabase, ""),
+            zones=zones_df, block=[],
         )
 
+    block = query.fetch_plan_block(supabase, phase.current_monday(today).isoformat())
     sessions = query.fetch_planned_sessions(supabase, week["week_start"])
     sessions = metrics.compute_adherence(sessions, activities)
-    return render.PlanView(week=week, sessions=sessions, zones=zones_df)
+    return render.PlanView(week=week, sessions=sessions, zones=zones_df, block=block)
 
 
 def main() -> None:

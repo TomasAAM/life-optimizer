@@ -1,10 +1,10 @@
-"""Pydantic schema for the LLM-generated weekly plan.
+"""Pydantic schema for the generated training plan.
 
-These models define the strict structured-output contract for
-``client.messages.parse``: the generator asks Claude to return exactly a
-``PlannedWeek`` and the SDK validates the response against this schema before we
-persist it. Keeping the shape flat (no free-form dicts) makes the JSON-schema
-constraint reliable.
+These models define the strict structured contract the Claude Code agent writes
+to ``data/plan_block.json``: a :class:`PlannedBlock` of one or more
+:class:`PlannedWeek` entries. ``plan.persist`` validates the file against this
+schema before upserting it, so a malformed week is rejected rather than stored.
+Keeping the shape flat (no free-form dicts) makes validation reliable.
 """
 
 from __future__ import annotations
@@ -99,15 +99,32 @@ class PlannedWeek(BaseModel):
     """A full week of prescribed sessions plus the generator's rationale."""
 
     rationale: str = Field(
-        description="2-4 sentences explaining how this week reflects the phase, the "
-        "athlete's recent load/recovery, and any auto-regulation applied."
+        description="2-4 sentences explaining how this week reflects its phase and any "
+        "race-week freshen or post-race recovery applied. The athlete self-regulates "
+        "recovery on the day, so do not reference Garmin readiness/HRV/CTL here."
     )
     methodology: str = Field(
         description="3-5 sentences naming the training PRINCIPLES this week applies "
         "(polarized mostly-easy volume, threshold work to raise LT2, heavy/explosive "
-        "strength for economy kept off hard-run days, gradual load progression, taper "
-        "when near the race) and why those principles fit a hybrid endurance athlete. "
+        "strength for economy kept off hard-run days, gradual load progression, freshen "
+        "before a race) and why those principles fit a hybrid endurance athlete. "
         "Reference principles only — do NOT invent citations; the sources are curated "
         "separately.",
     )
     sessions: list[PlannedSession]
+
+
+class PlannedBlock(BaseModel):
+    """A multi-week training block: an ordered list of planned weeks.
+
+    Week starts are not carried in the JSON — they are assigned deterministically
+    on persist from the block's first Monday (week ``i`` starts ``block_start +
+    7*i``), so the generator only has to order the weeks correctly, never compute
+    dates. ``weeks`` runs from the first week of the block to the last, in order.
+    """
+
+    weeks: list[PlannedWeek] = Field(
+        description="The block's weeks in chronological order (first week first). "
+        "Each is a full PlannedWeek; the number of weeks matches the block length "
+        "given in the brief."
+    )

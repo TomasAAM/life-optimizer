@@ -295,7 +295,12 @@ def _ingest_training_readiness(garmin: Garmin, supabase: Client, target_date: da
             "context": s.get("context"),
             "score": s.get("score"),
             "level": s.get("level"),
-            "recovery_time_h": s.get("recoveryTime"),
+            # Garmin reports `recoveryTime` in minutes; store it as hours.
+            "recovery_time_h": (
+                None
+                if s.get("recoveryTime") is None
+                else round(s.get("recoveryTime") / 60, 1)
+            ),
             "acute_load": s.get("acuteLoad"),
             "hrv_weekly_avg": s.get("hrvWeeklyAverage"),
             "sleep_score": s.get("sleepScore"),
