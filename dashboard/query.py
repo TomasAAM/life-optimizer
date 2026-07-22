@@ -87,6 +87,25 @@ def fetch_activities(supabase: Client) -> pd.DataFrame:
     )
 
 
+def fetch_running_volume(supabase: Client) -> pd.DataFrame:
+    """Fetch the fields needed to compute recent actual running volume.
+
+    Separate from :func:`fetch_activities` (which selects the training-load
+    columns) because the volume helper only needs the date, type and distance.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns: start_time_local, activity_type, distance_m.
+    """
+    return _fetch_all(
+        supabase,
+        "garmin_activities",
+        "start_time_local,activity_type,distance_m",
+        "start_time",
+    )
+
+
 def fetch_hrv(supabase: Client) -> pd.DataFrame:
     """Fetch Garmin HRV readings (per-reading; aggregated downstream).
 
