@@ -22,7 +22,7 @@ Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limi
 | Benchmark | Frequency | Preferred window |
 |---|---|---|
 | 5k time trial | every 4–6 wk | end of a build block, post-deload |
-| Lactate test (LT1 + LT2) | 1–2× per macrocycle | start of Nov build, then ~mid |
+| Threshold field test (30-min TT) | every ~6–8 wk | fresh, block boundary |
 | Long-run HR/pace decoupling | continuous (each long run) | review monthly |
 | Garmin VO2max estimate | continuous | directional only |
 | Est-1RM squat + trap-bar DL | every ~8 wk | fresh strength day |
@@ -41,8 +41,8 @@ Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limi
 | Metric | Protocol | Baseline | Target | Why tracked |
 |---|---|---|---|---|
 | **5k time trial** | Flat, fresh, even pacing. | **~sub-20:00** (PB, self-reported) | **sub-19:00** (PB ~ met — retarget for the pro track) | Single-number proxy for VO2/threshold; the headline goal metric. |
-| **LT2** (lactate turnpoint) | Lab or field graded test. | **4:34/km @ 163 bpm** (lab 2026-06-19) | push pace down at same HR | The ceiling both the 21k and Hyrox running share. |
-| **LT1** (aerobic threshold) | Lab graded test — **start slow enough to capture it** | **not yet captured** (started too fast last time) | establish | Defines the *true easy ceiling* the whole polarized plan hangs off. Highest-value single fix. |
+| **Threshold** (LT2 proxy) | **30-min TT** (Friel): avg HR of last 20 min ≈ LTHR, avg pace ≈ threshold pace. Same route, fresh. | **4:34/km @ 163 bpm** (lab 2026-06-19, one-time anchor) | push pace down at same HR | The ceiling both the 21k and Hyrox running share — re-check so zones don't drift. Lab lactate not repeated (access/cost); field TT keeps it current. |
+| **LT1** (aerobic threshold) | No recurring lactate test — approximate as a conservative easy cap below LT2 (the plan already caps easy well under the Z2 ceiling). Optional: DFA-a1 HRV app. | **not captured** — approximated | keep easy genuinely easy | Defines the true easy ceiling; without lactate we hold the safe conservative cap rather than a measured value. |
 | **Long-run decoupling** | Pa:HR drift over a steady long run (Garmin/TP). | — | **< 5%** | Aerobic durability — holding pace without HR creep. Essentially free. |
 | **Garmin VO2max** | Passive estimate. | — | upward trend | Noisy; directional support only, never a decision on its own. |
 
@@ -87,8 +87,8 @@ Baseline these from a **controlled self-test**, not from Aug 2 (different statio
   2×15 kg · tyre flip-over 80 m · obstacle course (final stage). High-rep, lighter-load, no sleds/ski/row.
 - **Post-race week (Aug 3–9):** free metrics only while recovering — decoupling from the last long run,
   Garmin VO2max, bodyweight, CMJ if fresh. No hard TTs.
-- **Nov build, wk 2–3:** full-battery baseline once recovered and built — 5k TT, lactate test **with LT1
-  captured**, strength est-1RMs, the Hyrox station battery.
+- **Nov build, wk 2–3:** full-battery baseline once recovered and built — 5k TT, **30-min threshold TT**
+  (LTHR + threshold pace), strength est-1RMs, the Hyrox station battery.
 - **2026-11-14:** actual Hyrox — the true competition benchmark.
 
 ## Results log
