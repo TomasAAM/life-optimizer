@@ -1,37 +1,100 @@
 {
   "weeks": [
     {
-      "rationale": "Peak week, 2 weeks out — the last week of real load before Hyrox, so we hold full in-band volume (~48 km) with three cleanly separated hard days: threshold Monday, a Hyrox compromised sim Wednesday, and a strength-endurance station circuit Friday. Heavy lower strength is clustered onto the hard threshold day to keep the easy days genuinely easy; plyometrics sit only on Thursday's easy run, which also now carries a dedicated heavy upper-body block (press + pull) - no running interference, invisible to Garmin load, and the last heavy-upper exposure before race week. Sunday is the fixed rest day.",
-      "methodology": "Polarized distribution keeps the two easy runs genuinely easy (well below the ~139 Z2 ceiling, since LT1 was not measured) and concentrates quality into separated hard days. Threshold anchored on the measured LT2 (163 bpm / 4:34/km) raises the aerobic ceiling shared by Hyrox running and the 21k. Heavy low-rep strength drives running economy and sled power and, because concurrent interference is narrow, pairs safely with a hard run while plyometrics stay on an easy day. Compromised running at competition station loads supplies the race-specific stimulus. Upper-body pressing and pulling strength is programmed on the easy day for hybrid robustness and station economy, with no interference to running.",
+      "rationale": "Race week — the event is Sunday 2 Aug. Monday through Wednesday still train normally: one true threshold session six days out (far enough to supercompensate rather than cost freshness), paired with a two-set heavy-lower touch, then a short three-round station primer on Wednesday. The final three days freshen — easy plus openers Thursday, full rest Friday, a 25-minute primer Saturday. Volume lands at the low end of the band (~43.5 km including the 8 km raced) because the freshen cuts volume, not intensity.",
+      "methodology": "A freshen cuts volume while holding intensity, which sheds fatigue without shedding fitness — the athlete's chosen half-week abbreviation of the classic taper, justified by the short race and an err-high bias. Monday's threshold work is anchored on the measured LT2 rather than the sub-threshold race pace used previously, keeping the session out of the grey zone where the stimulus is neither easy nor productive. Heavy strength is reduced to two top sets rather than dropped: taper evidence supports cutting volume and keeping intensity, so a low-volume, high-intensity lift preserves neural drive at negligible fatigue cost. Plyometrics are omitted entirely this week since residual leg stiffness is the one thing that cannot be recovered by Sunday. Easy days stay genuinely easy, well below the Z2 ceiling, so the two quality touches land on fresh legs.",
       "sessions": [
         {
           "day": "Monday",
           "session_type": "run",
-          "title": "Threshold 5x6' + Heavy Lower (double)",
+          "title": "Threshold 4x6' + Heavy Lower (double)",
           "zone": "Threshold",
           "intensity": "hard",
-          "duration_min": 65,
-          "distance_m": 12500,
-          "prescription": "AM (no-gym) THRESHOLD: 15 min easy warmup (Z1, <=138 bpm) -> 5x6 min @ threshold (155-163 bpm, 4:48-4:34/km) with 2:30 jog recovery -> 10 min easy cooldown. PM (gym, >=4 h later) HEAVY LOWER: back squat 4x3 @ 100 kg (RPE 8, explosive concentric, 3 min rest); trap-bar deadlift 3x3 @ 130 kg (RPE 8); hip thrust 3x8 @ 110 kg. No plyometrics today. Judge lifts by reps-in-reserve, not HR.",
+          "duration_min": 70,
+          "distance_m": 10900,
+          "prescription": "RUN: 15 min easy warmup -> 4x6 min at threshold (155-163 bpm, 4:48-4:34/km) with 2 min jog recovery -> 10 min easy cooldown. GYM (separate session, same day): back squat 2x3 @ 100 kg RPE 8, trap-bar deadlift 2x3 @ 130 kg RPE 8, 3 min full rest, concentric as fast as possible. Two top sets only — stop there.",
           "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "15 min easy", "target": "Z1, <=138 bpm", "load": null},
-            {"phase": "main", "kind": "run", "metric": "6 min @ threshold", "target": "155-163 bpm, 4:48-4:34/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2:30 jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "6 min @ threshold", "target": "155-163 bpm, 4:48-4:34/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2:30 jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "6 min @ threshold", "target": "155-163 bpm, 4:48-4:34/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2:30 jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "6 min @ threshold", "target": "155-163 bpm, 4:48-4:34/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2:30 jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "6 min @ threshold", "target": "155-163 bpm, 4:48-4:34/km", "load": null},
-            {"phase": "cooldown", "kind": "run", "metric": "10 min easy", "target": "Z1 jog down", "load": null},
-            {"phase": "main", "kind": "strength", "metric": "Back squat 4x3", "target": "RPE 8, explosive, 3 min rest", "load": "100 kg"},
-            {"phase": "main", "kind": "strength", "metric": "Trap-bar deadlift 3x3", "target": "RPE 8", "load": "130 kg"},
-            {"phase": "main", "kind": "strength", "metric": "Hip thrust 3x8", "target": "RPE 7-8", "load": "110 kg"}
+            {
+              "phase": "warmup",
+              "kind": "run",
+              "metric": "15 min easy",
+              "target": "Z1, no faster than 5:22/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "6 min at threshold",
+              "target": "155-163 bpm, 4:48-4:34/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2 min jog recovery",
+              "target": "very easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "6 min at threshold",
+              "target": "155-163 bpm, 4:48-4:34/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2 min jog recovery",
+              "target": "very easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "6 min at threshold",
+              "target": "155-163 bpm, 4:48-4:34/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2 min jog recovery",
+              "target": "very easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "6 min at threshold",
+              "target": "155-163 bpm, 4:48-4:34/km",
+              "load": null
+            },
+            {
+              "phase": "cooldown",
+              "kind": "run",
+              "metric": "10 min easy",
+              "target": "Z1 or slower",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Back squat 2x3",
+              "target": "RPE 8 (~2 RIR), 3 min rest, explosive concentric",
+              "load": "100 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Trap-bar deadlift 2x3",
+              "target": "RPE 8, 3 min rest, no grinding reps",
+              "load": "130 kg"
+            }
           ],
-          "purpose": "Raise LT2 and reinforce strength economy on one clean, unmistakably hard day.",
-          "why": "Threshold is the highest-value running quality for both Hyrox and the 21k; pairing it with heavy (not explosive) lower strength clusters the hard feel and, per the narrow concurrent-interference window, does not blunt max strength. Kept to 5x6' rather than more to protect Wednesday's sim.",
-          "hyrox_focus": "sled"
+          "purpose": "Last real quality of the block: hold LT2 and neural drive six days out.",
+          "why": "Threshold is the shared ceiling for the 21k and the race's running, and six days is enough for the stimulus to settle rather than linger — but only 24 min of work, not a full peak dose, because nothing gained this week outweighs arriving fresh. The lift is two top sets rather than a session: taper logic keeps intensity and cuts volume, and heavy low-rep work at this dose costs almost no recovery while preserving the power the race demands.",
+          "hyrox_focus": null
         },
         {
           "day": "Tuesday",
@@ -39,191 +102,83 @@
           "title": "Easy Aerobic",
           "zone": "Endurance",
           "intensity": "easy",
-          "duration_min": 55,
-          "distance_m": 9700,
-          "prescription": "55 min genuinely easy: HR <=138 bpm, ~5:35-6:00/km, fully conversational. Recovery from Monday's double — if in doubt, slow down.",
-          "steps": [],
-          "purpose": "Productive aerobic base at true easy intensity.",
-          "why": "Easy volume is where aerobic fitness and the 21k base are built; keeping it genuinely easy protects the quality on Wednesday. No strides today so Monday's legs recover fully.",
-          "hyrox_focus": null
-        },
-        {
-          "day": "Wednesday",
-          "session_type": "sim",
-          "title": "Hyrox Compromised Sim (5 rounds)",
-          "zone": "mixed",
-          "intensity": "hard",
-          "duration_min": 58,
-          "distance_m": 6000,
-          "prescription": "10 min easy warmup -> 5 rounds, each: 1000 m run @ race pace (Z3-Z4, ~4:50-4:55/km, 150-160 bpm) straight into one station at Men's Pro load - R1 ski erg 1000 m; R2 sled push 202 kg / 50 m; R3 sled pull 153 kg / 50 m; R4 farmers carry 2x32 kg / 200 m; R5 wall balls 9 kg x 50. Minimal transitions. 5 min jog cooldown.",
-          "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "10 min easy", "target": "Z1 + drills", "load": null},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:50-4:55/km, 150-160 bpm", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Ski erg 1000 m", "target": "strong steady pull", "load": null},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:50-4:55/km, 150-160 bpm", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Sled push 50 m", "target": "drive low, steady", "load": "202 kg"},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:50-4:55/km, 150-160 bpm", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Sled pull 50 m", "target": "hand-over-hand", "load": "153 kg"},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:50-4:55/km, 150-160 bpm", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Farmers carry 200 m", "target": "unbroken grip", "load": "2x32 kg"},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:50-4:55/km, 150-160 bpm", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Wall balls x50", "target": "to 3.0 m target", "load": "9 kg"},
-            {"phase": "cooldown", "kind": "run", "metric": "5 min jog", "target": "very easy", "load": null}
-          ],
-          "purpose": "Rehearse race-pace running under station-induced fatigue across the full station spread.",
-          "why": "Compromised running at competition loads is the core Hyrox specificity lever; five rounds is the peak-week dose while fresh, covering all the heavy stations without tipping into overload before race week.",
-          "hyrox_focus": "compromised running"
-        },
-        {
-          "day": "Thursday",
-          "session_type": "run",
-          "title": "Easy + Plyo + Heavy Upper (double)",
-          "zone": "Endurance",
-          "intensity": "easy",
-          "duration_min": 45,
-          "distance_m": 8000,
-          "prescription": "AM (no-gym): 45 min easy, HR <=138 bpm, conversational. PM (gym) PLYO + HEAVY UPPER, judged by reps-in-reserve not HR: first while fresh - box jumps 4x3 + pogo hops 3x10, full recovery (CNS snap only). Then upper strength - weighted pull-up 4x4 (RPE 8); standing overhead press 4x4 (RPE 8); incline bench press 3x6 (RPE 7-8); chest-supported row 3x8 (RPE 8). Loads below are starting estimates - autoregulate to the target RPE and log actuals. Stop at RPE 8, not to failure - this is the last heavy-upper exposure before race week. Keep the plyo tiny so Thursday still buffers between Wednesday's sim and Friday's circuit.",
-          "steps": [
-            {"phase": "main", "kind": "run", "metric": "45 min easy", "target": "<=138 bpm, conversational", "load": null},
-            {"phase": "main", "kind": "strength", "metric": "Box jumps 4x3", "target": "explosive, full recovery", "load": "bodyweight"},
-            {"phase": "main", "kind": "strength", "metric": "Pogo hops 3x10", "target": "stiff, fast ground contact", "load": "bodyweight"},
-            {"phase": "main", "kind": "strength", "metric": "Weighted pull-up 4x4", "target": "RPE 8, vertical pull", "load": "~+10 kg (autoreg)"},
-            {"phase": "main", "kind": "strength", "metric": "Standing overhead press 4x4", "target": "RPE 8, vertical press", "load": "~50 kg (autoreg)"},
-            {"phase": "main", "kind": "strength", "metric": "Incline bench press 3x6", "target": "RPE 7-8, horizontal press", "load": "~70 kg (autoreg)"},
-            {"phase": "main", "kind": "strength", "metric": "Chest-supported row 3x8", "target": "RPE 8, horizontal pull", "load": "~70 kg (autoreg)"}
-          ],
-          "purpose": "Easy aerobic volume, explosive maintenance, and the week's dedicated upper-body strength between the two hard days.",
-          "why": "Explosive work interferes with running only within the same hard session, so plyo stays on this easy day. Upper-body strength has effectively no running interference (the interference window is explosive lower-body power) and is invisible to Garmin load, so a full press+pull block slots here without disturbing the polarized running week; it backs the upper-biased Hyrox stations (ski erg, sled pull, wall ball, burpee broad jump). Placed as the last heavy-upper exposure before race week - held to RPE 8 with minimal plyo so Thursday still recovers between Wednesday's sim and Friday's circuit.",
-          "hyrox_focus": "upper-body strength"
-        },
-        {
-          "day": "Friday",
-          "session_type": "functional",
-          "title": "Strength-Endurance Station Circuit",
-          "zone": "mixed",
-          "intensity": "hard",
           "duration_min": 50,
-          "distance_m": 2000,
-          "prescription": "10 min easy warmup -> 4 rounds for quality, minimal rest within a round, 90 s between rounds: sandbag lunges 30 kg / 100 m; burpee broad jumps 15; wall balls 9 kg x 40; row 500 m; sled pull 153 kg / 25 m. -> 5 min easy jog. Station-endurance under fatigue, not a run day.",
-          "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "10 min easy", "target": "Z1", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Sandbag lunges 100 m", "target": "unbroken", "load": "30 kg"},
-            {"phase": "main", "kind": "station", "metric": "Burpee broad jumps x15", "target": "full extension", "load": "bodyweight"},
-            {"phase": "main", "kind": "station", "metric": "Wall balls x40", "target": "to 3.0 m", "load": "9 kg"},
-            {"phase": "main", "kind": "station", "metric": "Row 500 m", "target": "strong steady", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Sled pull 25 m", "target": "hand-over-hand", "load": "153 kg"},
-            {"phase": "main", "kind": "rest", "metric": "90 s between rounds", "target": "x4 rounds total", "load": null},
-            {"phase": "cooldown", "kind": "run", "metric": "5 min jog", "target": "very easy", "load": null}
-          ],
-          "purpose": "Local muscular endurance across the lighter stations at competition load.",
-          "why": "Complements Wednesday's running-biased sim by loading the grip/leg/shoulder endurance the race demands; kept as a station circuit (little running) so it does not eat into the weekly km the easy runs carry.",
-          "hyrox_focus": "wall balls"
-        },
-        {
-          "day": "Saturday",
-          "session_type": "run",
-          "title": "Long Run + Race-Pace Finish",
-          "zone": "Endurance",
-          "intensity": "moderate",
-          "duration_min": 90,
-          "distance_m": 16000,
-          "prescription": "75 min easy (HR <=140 bpm, ~5:35-5:50/km) -> 4x3 min @ race pace (~4:50-4:55/km) with 2 min easy jog between -> 6 min easy cooldown. Keep the bulk genuinely easy.",
-          "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "75 min easy", "target": "<=140 bpm, ~5:35-5:50/km", "load": null},
-            {"phase": "main", "kind": "run", "metric": "3 min @ race pace", "target": "~4:50-4:55/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min easy jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "3 min @ race pace", "target": "~4:50-4:55/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min easy jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "3 min @ race pace", "target": "~4:50-4:55/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min easy jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "3 min @ race pace", "target": "~4:50-4:55/km", "load": null},
-            {"phase": "cooldown", "kind": "run", "metric": "6 min easy", "target": "very easy", "load": null}
-          ],
-          "purpose": "Aerobic endurance for the 21k base plus a short race-pace touch.",
-          "why": "The long run is the primary endurance driver for the standing 21k goal; a short race-pace finish adds specificity without turning the run grey. Race-pace kept to 4x3' so it does not become a third hard running day.",
-          "hyrox_focus": null
-        },
-        {
-          "day": "Sunday",
-          "session_type": "rest",
-          "title": "Rest",
-          "zone": null,
-          "intensity": "easy",
-          "duration_min": 0,
-          "distance_m": null,
-          "prescription": "Full rest. Optional light mobility or an easy walk.",
+          "distance_m": 9000,
+          "prescription": "50 min genuinely easy, HR <=138 bpm, no faster than 5:22/km, conversational throughout. If the legs are heavy from Monday, go slower — do not shorten.",
           "steps": [],
-          "purpose": "Recovery.",
-          "why": "The fixed rest day protects recovery and separates the week's quality before race week begins.",
-          "hyrox_focus": null
-        }
-      ]
-    },
-    {
-      "rationale": "Race week — Hyrox is Sunday 2 Aug. We train normally Monday through Wednesday (one sharpener, one short sim), then freshen the final three days: easy + openers Thursday, rest Friday, a short pre-race primer Saturday, race Sunday. No heavy strength this week so the legs arrive fresh; this is a deliberate half-week freshen, not a full-week taper.",
-      "methodology": "A short freshen (volume down, intensity retained) preserves the fitness built in the block while shedding fatigue — the athlete's chosen abbreviation of the classic taper, justified by the shorter Hyrox effort and an err-high bias. The final sharpeners stay at race pace to keep the neuromuscular system primed. Heavy strength and plyometrics are dropped in the freshen window to avoid residual leg fatigue.",
-      "sessions": [
-        {
-          "day": "Monday",
-          "session_type": "run",
-          "title": "Race-Pace Sharpener 5x1000 m",
-          "zone": "Threshold",
-          "intensity": "hard",
-          "duration_min": 52,
-          "distance_m": 10500,
-          "prescription": "15 min easy warmup -> 5x1000 m @ race-to-threshold pace (~4:45-4:55/km, 155-163 bpm) with 2 min jog recovery -> 10 min easy cooldown. Crisp and controlled, not maximal.",
-          "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "15 min easy", "target": "Z1, <=138 bpm", "load": null},
-            {"phase": "main", "kind": "run", "metric": "1000 m", "target": "~4:45-4:55/km, 155-163 bpm", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "1000 m", "target": "~4:45-4:55/km, 155-163 bpm", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "1000 m", "target": "~4:45-4:55/km, 155-163 bpm", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "1000 m", "target": "~4:45-4:55/km, 155-163 bpm", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "1000 m", "target": "~4:45-4:55/km, 155-163 bpm", "load": null},
-            {"phase": "cooldown", "kind": "run", "metric": "10 min easy", "target": "Z1 jog down", "load": null}
-          ],
-          "purpose": "Sharpen race-pace turnover early in race week while there is still time to absorb it.",
-          "why": "Race-pace intervals keep the aerobic-power system primed; placed Monday (6 days out) so any fatigue clears well before Sunday. No accompanying strength this week to keep the legs fresh.",
-          "hyrox_focus": "compromised running"
-        },
-        {
-          "day": "Tuesday",
-          "session_type": "run",
-          "title": "Easy Aerobic",
-          "zone": "Endurance",
-          "intensity": "easy",
-          "duration_min": 45,
-          "distance_m": 8000,
-          "prescription": "45 min genuinely easy, HR <=138 bpm, conversational. Pure recovery between the two race-week quality touches.",
-          "steps": [],
-          "purpose": "Easy aerobic flush.",
-          "why": "Keeps blood flowing and aerobic base ticking while shedding Monday's fatigue; strictly easy so Wednesday's sim is sharp.",
+          "purpose": "Carry easy volume and clear Monday's fatigue.",
+          "why": "Polarized training depends on the easy days being truly easy; this is the day that pays for Monday and sets up Wednesday's primer. No strides or pickups — any grey-zone effort here would blunt both quality touches of the week.",
           "hyrox_focus": null
         },
         {
           "day": "Wednesday",
           "session_type": "sim",
-          "title": "Short Hyrox Primer (3 rounds)",
+          "title": "Short Station Primer (3 rounds)",
           "zone": "mixed",
           "intensity": "moderate",
-          "duration_min": 38,
-          "distance_m": 4000,
-          "prescription": "10 min easy warmup -> 3 rounds: 1000 m run @ race pace (~4:50-4:55/km) into one station - R1 sled push 202 kg / 50 m; R2 sled pull 153 kg / 50 m; R3 wall balls 9 kg x 40. Controlled, rehearse transitions. 5 min jog cooldown.",
+          "duration_min": 40,
+          "distance_m": 5800,
+          "prescription": "10 min easy warmup + drills -> 3 rounds of 1000 m at ~4:50-4:55/km straight into one station: R1 sled push 202 kg / 50 m; R2 sled pull 153 kg / 50 m; R3 wall balls 9 kg x 40 to 3.0 m. Rehearse the transitions deliberately — controlled, never maximal. 5 min jog cooldown.",
           "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "10 min easy", "target": "Z1 + drills", "load": null},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:50-4:55/km", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Sled push 50 m", "target": "drive low", "load": "202 kg"},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:50-4:55/km", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Sled pull 50 m", "target": "hand-over-hand", "load": "153 kg"},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:50-4:55/km", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Wall balls x40", "target": "to 3.0 m", "load": "9 kg"},
-            {"phase": "cooldown", "kind": "run", "metric": "5 min jog", "target": "very easy", "load": null}
+            {
+              "phase": "warmup",
+              "kind": "run",
+              "metric": "10 min easy + drills",
+              "target": "Z1",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:50-4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Sled push 50 m",
+              "target": "stay low, short steps",
+              "load": "202 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:50-4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Sled pull 50 m",
+              "target": "hand-over-hand, hips back",
+              "load": "153 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:50-4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Wall balls x40",
+              "target": "to 3.0 m, unbroken if possible",
+              "load": "9 kg"
+            },
+            {
+              "phase": "cooldown",
+              "kind": "run",
+              "metric": "5 min jog",
+              "target": "very easy",
+              "load": null
+            }
           ],
-          "purpose": "Final race-specific rehearsal at low volume — transitions and race feel, not fitness building.",
-          "why": "Three rounds keeps the race pattern fresh in the legs while the reduced volume begins the freshen; the last true station work before the race.",
+          "purpose": "Final rehearsal of running on pre-fatigued legs and of station transitions.",
+          "why": "Compromised running is the demand no pure run session trains, and three rounds keeps that pattern live in the legs; it is capped at three because this is the last station work before Sunday and the freshen starts tomorrow. Loads stay at competition standard for specificity, but the volume is a third of a full sim.",
           "hyrox_focus": "compromised running"
         },
         {
@@ -232,15 +187,27 @@
           "title": "Easy + Openers",
           "zone": "Endurance",
           "intensity": "easy",
-          "duration_min": 35,
-          "distance_m": 6000,
-          "prescription": "30 min easy (HR <=138 bpm) + 4x20 s relaxed strides at race pace with full walk-back recovery. Freshen begins: short and snappy, never draining.",
+          "duration_min": 38,
+          "distance_m": 6200,
+          "prescription": "30 min easy (HR <=138 bpm) + 4x20 s relaxed strides at race pace with full walk-back recovery. Freshen begins: short and snappy, nothing draining.",
           "steps": [
-            {"phase": "main", "kind": "run", "metric": "30 min easy", "target": "<=138 bpm", "load": null},
-            {"phase": "main", "kind": "run", "metric": "4x20 s strides", "target": "race pace, relaxed, full recovery", "load": null}
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "30 min easy",
+              "target": "HR <=138 bpm, 5:22/km or slower",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "4x20 s strides",
+              "target": "race pace, relaxed, full walk-back",
+              "load": null
+            }
           ],
-          "purpose": "Maintain leg speed with minimal fatigue as the freshen starts.",
-          "why": "Strides keep neuromuscular pop without cost; volume drops sharply now that the race is 3 days out.",
+          "purpose": "Keep neuromuscular sharpness while volume drops.",
+          "why": "Strides maintain turnover at essentially zero fatigue cost, which is exactly what a freshen wants: intensity retained, volume cut. Three days out there is no fitness left to gain, so the run is short and the strides are the only quality.",
           "hyrox_focus": null
         },
         {
@@ -251,10 +218,10 @@
           "intensity": "easy",
           "duration_min": 0,
           "distance_m": null,
-          "prescription": "Full rest. Light mobility and good sleep. Rest day shifted from Sunday this week for the race.",
+          "prescription": "Full rest. Mobility, hydration, and sleep. The usual Sunday rest day moves here because Sunday is race day.",
           "steps": [],
-          "purpose": "Freshen — shed all residual fatigue.",
-          "why": "A full rest 2 days out banks recovery for race day; the usual Sunday rest moves here because Sunday is race day.",
+          "purpose": "Bank recovery two days out.",
+          "why": "A full rest day 48 h out lets the last of the week's fatigue clear while the freshen is still short enough to avoid feeling flat. Nothing productive can be added at this point that would not cost more than it returns.",
           "hyrox_focus": null
         },
         {
@@ -263,32 +230,162 @@
           "title": "Pre-Race Primer",
           "zone": "Endurance",
           "intensity": "easy",
-          "duration_min": 22,
-          "distance_m": 4000,
-          "prescription": "15 min easy jog + 3x30 s at race pace (~4:50/km) with full recovery + a few dynamic drills. Just enough to feel sharp for tomorrow — leave completely fresh.",
+          "duration_min": 25,
+          "distance_m": 3500,
+          "prescription": "15 min easy jog + 3x30 s at race pace (~4:50/km) with full recovery + dynamic drills. Rehearse the race-morning routine (timing, breakfast, kit). Finish feeling like you could have done much more.",
           "steps": [
-            {"phase": "main", "kind": "run", "metric": "15 min easy", "target": "very easy, <=135 bpm", "load": null},
-            {"phase": "main", "kind": "run", "metric": "3x30 s @ race pace", "target": "~4:50/km, full recovery", "load": null}
+            {
+              "phase": "warmup",
+              "kind": "run",
+              "metric": "15 min easy jog",
+              "target": "Z1, conversational",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "3x30 s at race pace",
+              "target": "~4:50/km, full recovery between",
+              "load": null
+            },
+            {
+              "phase": "cooldown",
+              "kind": "note",
+              "metric": "Dynamic drills",
+              "target": "leg swings, A-skips, a few squats and lunges",
+              "load": null
+            }
           ],
-          "purpose": "Prime the system the day before the race without adding fatigue.",
-          "why": "A short opener with a few race-pace touches wakes the legs up; kept under 25 min so it primes rather than tires.",
+          "purpose": "Wake the legs up without touching tomorrow's freshness.",
+          "why": "A short opener with a few race-pace touches keeps the nervous system primed after a rest day, which usually beats total rest the day before. Held under 25 min so it primes rather than tires.",
           "hyrox_focus": null
         },
         {
           "day": "Sunday",
           "session_type": "sim",
-          "title": "RACE: Hyrox",
+          "title": "RACE: Aug 2 event (Mixto)",
           "zone": "mixed",
           "intensity": "hard",
-          "duration_min": 75,
+          "duration_min": 80,
           "distance_m": 8000,
-          "prescription": "RACE DAY. 8x1000 m running interspersed with the 8 stations (ski erg, sled push 202 kg, sled pull 153 kg, burpee broad jumps, row, farmers 2x32 kg, sandbag lunges 30 kg, wall balls 100). Pace the first 2-3 runs conservatively (~4:55-5:00/km), hold form through the sleds, empty the tank on the last run + wall balls.",
+          "prescription": "RACE DAY. 8 km of running broken by eight stations: deadlift 100 reps @ 34 kg; wall balls 100 reps @ 6 kg; burpee broad jump 80 m; sandbag lunges 100 m @ 10 kg; thrusters 100 reps @ 29 kg; farmers carry 200 m @ 2x15 kg; tyre flip-over 80 m; obstacle course to finish. PACING: run the first two legs at ~5:00-5:05/km, deliberately slower than feels right. STATION STRATEGY: break every 100-rep set into planned chunks from rep one (thrusters 5x20, wall balls 5x20, deadlifts 4x25) with 10-15 s between chunks — do not start unbroken. Empty the tank only on the final run and the obstacle course.",
           "steps": [
-            {"phase": "main", "kind": "note", "metric": "Race execution", "target": "even pacing, controlled sleds, strong final 1 km", "load": null}
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1 km run",
+              "target": "~5:00-5:05/km, conservative",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Deadlift 100 reps",
+              "target": "4x25, short breaks, keep the back flat",
+              "load": "34 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1 km run",
+              "target": "~5:00-5:05/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Wall balls 100 reps",
+              "target": "5x20, breathe at the top",
+              "load": "6 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1 km run",
+              "target": "settle into ~4:55-5:00/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Burpee broad jump 80 m",
+              "target": "steady rhythm, do not sprint",
+              "load": "bodyweight"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1 km run",
+              "target": "~4:55-5:00/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Sandbag lunges 100 m",
+              "target": "chest tall, knee light to the floor",
+              "load": "10 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1 km run",
+              "target": "~4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Thrusters 100 reps",
+              "target": "5x20 — the biggest blow-up risk of the day",
+              "load": "29 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1 km run",
+              "target": "~4:55/km, shake the legs out",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Farmers carry 200 m",
+              "target": "one drop maximum, grip before legs",
+              "load": "2x15 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1 km run",
+              "target": "~4:50/km if the legs allow",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Tyre flip-over 80 m",
+              "target": "hips through, no rounded pulls",
+              "load": "event tyre"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1 km run",
+              "target": "empty the tank",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Obstacle course",
+              "target": "final stage — controlled aggression",
+              "load": null
+            }
           ],
-          "purpose": "Race the first Hyrox of the calendar.",
-          "why": "The target the whole block pointed at; execution over heroics — bank a solid time and a clean data point to shape the Nov 14 build.",
-          "hyrox_focus": "race"
+          "purpose": "Race the event and bank a competitive-effort data point for the Nov 14 build.",
+          "why": "This is the target the block pointed at; execution beats heroics. The stations here are high-rep and light, so the limiter is local muscular fatigue rather than the run — which is why the pacing plan is conservative early and the 100-rep sets are pre-broken from the first rep. Log the running splits under fatigue: those are the numbers that carry into the November macrocycle.",
+          "hyrox_focus": "compromised running"
         }
       ]
     },
@@ -334,13 +431,55 @@
           "distance_m": 11000,
           "prescription": "15 min easy warmup -> 3x8 min @ tempo (147-155 bpm, 5:04-4:48/km) with 2 min jog -> 10 min easy cooldown. Tempo, not threshold — controlled first quality back.",
           "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "15 min easy", "target": "Z1, <=138 bpm", "load": null},
-            {"phase": "main", "kind": "run", "metric": "8 min @ tempo", "target": "147-155 bpm, 5:04-4:48/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "8 min @ tempo", "target": "147-155 bpm, 5:04-4:48/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "8 min @ tempo", "target": "147-155 bpm, 5:04-4:48/km", "load": null},
-            {"phase": "cooldown", "kind": "run", "metric": "10 min easy", "target": "Z1 jog down", "load": null}
+            {
+              "phase": "warmup",
+              "kind": "run",
+              "metric": "15 min easy",
+              "target": "Z1, <=138 bpm",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "8 min @ tempo",
+              "target": "147-155 bpm, 5:04-4:48/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2 min jog",
+              "target": "easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "8 min @ tempo",
+              "target": "147-155 bpm, 5:04-4:48/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2 min jog",
+              "target": "easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "8 min @ tempo",
+              "target": "147-155 bpm, 5:04-4:48/km",
+              "load": null
+            },
+            {
+              "phase": "cooldown",
+              "kind": "run",
+              "metric": "10 min easy",
+              "target": "Z1 jog down",
+              "load": null
+            }
           ],
           "purpose": "Reintroduce sustained aerobic-threshold work at a controlled intensity.",
           "why": "Tempo rather than full threshold eases quality back in the week after a race; still enough stimulus to hold the aerobic ceiling built for Hyrox.",
@@ -356,11 +495,41 @@
           "distance_m": 4000,
           "prescription": "AM (no-gym): 20 min very easy shakeout, HR <=135 bpm. PM (gym): back squat 4x3 @ 100 kg (RPE 8, 3 min rest); trap-bar deadlift 3x3 @ 130 kg; hip thrust 3x8 @ 110 kg; weighted step-up 3x8 @ 20 kg/hand. Judge by RIR, not HR. No plyometrics.",
           "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "20 min easy shakeout", "target": "<=135 bpm", "load": null},
-            {"phase": "main", "kind": "strength", "metric": "Back squat 4x3", "target": "RPE 8, 3 min rest", "load": "100 kg"},
-            {"phase": "main", "kind": "strength", "metric": "Trap-bar deadlift 3x3", "target": "RPE 8", "load": "130 kg"},
-            {"phase": "main", "kind": "strength", "metric": "Hip thrust 3x8", "target": "RPE 7-8", "load": "110 kg"},
-            {"phase": "main", "kind": "strength", "metric": "Weighted step-up 3x8/leg", "target": "controlled", "load": "20 kg/hand"}
+            {
+              "phase": "warmup",
+              "kind": "run",
+              "metric": "20 min easy shakeout",
+              "target": "<=135 bpm",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Back squat 4x3",
+              "target": "RPE 8, 3 min rest",
+              "load": "100 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Trap-bar deadlift 3x3",
+              "target": "RPE 8",
+              "load": "130 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Hip thrust 3x8",
+              "target": "RPE 7-8",
+              "load": "110 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Weighted step-up 3x8/leg",
+              "target": "controlled",
+              "load": "20 kg/hand"
+            }
           ],
           "purpose": "Restore heavy strength for running economy and sled power in the new build.",
           "why": "Heavy low-rep strength is the main economy driver; reintroduced now to anchor the 15-week Hyrox build. Paired with only a light shakeout so it is a clean strength day.",
@@ -376,8 +545,20 @@
           "distance_m": 9000,
           "prescription": "50 min easy (HR <=138 bpm) + 6x20 s relaxed strides with full recovery. Easy volume with a light neuromuscular touch.",
           "steps": [
-            {"phase": "main", "kind": "run", "metric": "50 min easy", "target": "<=138 bpm, conversational", "load": null},
-            {"phase": "main", "kind": "run", "metric": "6x20 s strides", "target": "fast-relaxed, full recovery", "load": null}
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "50 min easy",
+              "target": "<=138 bpm, conversational",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "6x20 s strides",
+              "target": "fast-relaxed, full recovery",
+              "load": null
+            }
           ],
           "purpose": "Aerobic volume plus economy pop.",
           "why": "Builds base km toward the 47-58 target; strides add turnover without grey-zone cost the day before the long run.",
@@ -441,18 +622,90 @@
           "distance_m": 12000,
           "prescription": "AM (no-gym) THRESHOLD: 15 min easy warmup -> 4x8 min @ threshold (155-163 bpm, 4:48-4:34/km) with 2:30 jog -> 10 min easy cooldown. PM (gym): back squat 4x3 @ 100 kg (RPE 8, progress if >2 RIR); trap-bar deadlift 3x3 @ 130 kg; hip thrust 3x8 @ 110 kg. No plyometrics today.",
           "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "15 min easy", "target": "Z1, <=138 bpm", "load": null},
-            {"phase": "main", "kind": "run", "metric": "8 min @ threshold", "target": "155-163 bpm, 4:48-4:34/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2:30 jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "8 min @ threshold", "target": "155-163 bpm, 4:48-4:34/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2:30 jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "8 min @ threshold", "target": "155-163 bpm, 4:48-4:34/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2:30 jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "8 min @ threshold", "target": "155-163 bpm, 4:48-4:34/km", "load": null},
-            {"phase": "cooldown", "kind": "run", "metric": "10 min easy", "target": "Z1 jog down", "load": null},
-            {"phase": "main", "kind": "strength", "metric": "Back squat 4x3", "target": "RPE 8, progress if >2 RIR", "load": "100 kg"},
-            {"phase": "main", "kind": "strength", "metric": "Trap-bar deadlift 3x3", "target": "RPE 8", "load": "130 kg"},
-            {"phase": "main", "kind": "strength", "metric": "Hip thrust 3x8", "target": "RPE 7-8", "load": "110 kg"}
+            {
+              "phase": "warmup",
+              "kind": "run",
+              "metric": "15 min easy",
+              "target": "Z1, <=138 bpm",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "8 min @ threshold",
+              "target": "155-163 bpm, 4:48-4:34/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2:30 jog",
+              "target": "easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "8 min @ threshold",
+              "target": "155-163 bpm, 4:48-4:34/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2:30 jog",
+              "target": "easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "8 min @ threshold",
+              "target": "155-163 bpm, 4:48-4:34/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2:30 jog",
+              "target": "easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "8 min @ threshold",
+              "target": "155-163 bpm, 4:48-4:34/km",
+              "load": null
+            },
+            {
+              "phase": "cooldown",
+              "kind": "run",
+              "metric": "10 min easy",
+              "target": "Z1 jog down",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Back squat 4x3",
+              "target": "RPE 8, progress if >2 RIR",
+              "load": "100 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Trap-bar deadlift 3x3",
+              "target": "RPE 8",
+              "load": "130 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Hip thrust 3x8",
+              "target": "RPE 7-8",
+              "load": "110 kg"
+            }
           ],
           "purpose": "Raise LT2 and maintain strength economy in one clean hard day.",
           "why": "Threshold volume nudged up to 4x8' as base fitness rebuilds; paired with heavy lower to cluster the hard feel. Progress the squat load if it leaves >2 RIR — that is the fix for it feeling easy.",
@@ -482,16 +735,76 @@
           "distance_m": 5000,
           "prescription": "10 min easy warmup -> 4 rounds: 1000 m run @ race pace (~4:55/km, 150-160 bpm) into one station - R1 ski erg 1000 m; R2 sled push 202 kg / 50 m; R3 farmers carry 2x32 kg / 200 m; R4 wall balls 9 kg x 50. 5 min jog cooldown.",
           "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "10 min easy", "target": "Z1 + drills", "load": null},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:55/km, 150-160 bpm", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Ski erg 1000 m", "target": "steady pull", "load": null},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:55/km, 150-160 bpm", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Sled push 50 m", "target": "drive low", "load": "202 kg"},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:55/km, 150-160 bpm", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Farmers carry 200 m", "target": "unbroken grip", "load": "2x32 kg"},
-            {"phase": "main", "kind": "run", "metric": "1000 m compromised", "target": "~4:55/km, 150-160 bpm", "load": null},
-            {"phase": "main", "kind": "station", "metric": "Wall balls x50", "target": "to 3.0 m", "load": "9 kg"},
-            {"phase": "cooldown", "kind": "run", "metric": "5 min jog", "target": "very easy", "load": null}
+            {
+              "phase": "warmup",
+              "kind": "run",
+              "metric": "10 min easy",
+              "target": "Z1 + drills",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:55/km, 150-160 bpm",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Ski erg 1000 m",
+              "target": "steady pull",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:55/km, 150-160 bpm",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Sled push 50 m",
+              "target": "drive low",
+              "load": "202 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:55/km, 150-160 bpm",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Farmers carry 200 m",
+              "target": "unbroken grip",
+              "load": "2x32 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:55/km, 150-160 bpm",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Wall balls x50",
+              "target": "to 3.0 m",
+              "load": "9 kg"
+            },
+            {
+              "phase": "cooldown",
+              "kind": "run",
+              "metric": "5 min jog",
+              "target": "very easy",
+              "load": null
+            }
           ],
           "purpose": "Maintain compromised-running skill and station endurance far out from the race.",
           "why": "Four rounds keeps the race pattern alive during base without the specificity load of a peak sim; a lighter dose than the peak-week five rounds since the race is 14 weeks away.",
@@ -507,9 +820,27 @@
           "distance_m": 8000,
           "prescription": "AM (no-gym): 45 min easy, HR <=138 bpm. PM (gym, ~15 min): box jumps 4x3 + hurdle hops 3x5, full recovery. Explosive snap only.",
           "steps": [
-            {"phase": "main", "kind": "run", "metric": "45 min easy", "target": "<=138 bpm, conversational", "load": null},
-            {"phase": "main", "kind": "strength", "metric": "Box jumps 4x3", "target": "explosive, full recovery", "load": "bodyweight"},
-            {"phase": "main", "kind": "strength", "metric": "Hurdle hops 3x5", "target": "stiff, fast contacts", "load": "bodyweight"}
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "45 min easy",
+              "target": "<=138 bpm, conversational",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Box jumps 4x3",
+              "target": "explosive, full recovery",
+              "load": "bodyweight"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Hurdle hops 3x5",
+              "target": "stiff, fast contacts",
+              "load": "bodyweight"
+            }
           ],
           "purpose": "Easy volume plus explosive maintenance.",
           "why": "Plyometrics preserve power for sleds and running economy; kept on an easy day per the concurrent-interference window, and the run stays easy before Saturday's long run.",
@@ -525,15 +856,69 @@
           "distance_m": 17000,
           "prescription": "80 min easy (HR <=142 bpm, ~5:30-5:50/km) -> 4x3 min @ race pace (~4:55/km) with 2 min easy jog -> 6 min easy cooldown.",
           "steps": [
-            {"phase": "warmup", "kind": "run", "metric": "80 min easy", "target": "<=142 bpm, ~5:30-5:50/km", "load": null},
-            {"phase": "main", "kind": "run", "metric": "3 min @ race pace", "target": "~4:55/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min easy jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "3 min @ race pace", "target": "~4:55/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min easy jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "3 min @ race pace", "target": "~4:55/km", "load": null},
-            {"phase": "main", "kind": "rest", "metric": "2 min easy jog", "target": "easy", "load": null},
-            {"phase": "main", "kind": "run", "metric": "3 min @ race pace", "target": "~4:55/km", "load": null},
-            {"phase": "cooldown", "kind": "run", "metric": "6 min easy", "target": "very easy", "load": null}
+            {
+              "phase": "warmup",
+              "kind": "run",
+              "metric": "80 min easy",
+              "target": "<=142 bpm, ~5:30-5:50/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "3 min @ race pace",
+              "target": "~4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2 min easy jog",
+              "target": "easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "3 min @ race pace",
+              "target": "~4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2 min easy jog",
+              "target": "easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "3 min @ race pace",
+              "target": "~4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2 min easy jog",
+              "target": "easy",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "3 min @ race pace",
+              "target": "~4:55/km",
+              "load": null
+            },
+            {
+              "phase": "cooldown",
+              "kind": "run",
+              "metric": "6 min easy",
+              "target": "very easy",
+              "load": null
+            }
           ],
           "purpose": "Build 21k endurance with a light race-pace touch.",
           "why": "Long-run volume climbs as base builds; the short race-pace finish keeps specificity without a third hard running day.",
@@ -551,6 +936,282 @@
           "steps": [],
           "purpose": "Recovery.",
           "why": "The fixed weekly rest day; protects recovery and closes the block cleanly.",
+          "hyrox_focus": null
+        }
+      ]
+    },
+    {
+      "rationale": "Third base week of the Nov 14 macrocycle re-entry, 13 weeks out. Volume sits at the top of the band (~58 km) with the standard base shape: one threshold session, one compromised sim, a long run, and easy volume carrying the rest. Nothing is peaked here — the job is accumulating easy kilometres and holding one quality touch per system.",
+      "methodology": "Base weeks are built on a large easy fraction with a small, potent dose of hard work, which is the robust finding across elite endurance training. One threshold session anchored on the measured LT2 raises the ceiling both the 21k and the race's running share. Heavy compound strength supports running economy and is paired with the hard run so the easy days stay clean, while plyometrics sit on an easy-run day because same-session concurrent training is the one place power is meaningfully blunted. Volume steps up gradually rather than spiking.",
+      "sessions": [
+        {
+          "day": "Monday",
+          "session_type": "run",
+          "title": "Easy Aerobic",
+          "zone": "Endurance",
+          "intensity": "easy",
+          "duration_min": 50,
+          "distance_m": 9000,
+          "prescription": "50 min easy, HR <=138 bpm, no faster than 5:22/km. Conversational throughout.",
+          "steps": [],
+          "purpose": "Open the week with unambiguous easy volume.",
+          "why": "Easy kilometres are the bulk of what raises aerobic base; keeping them strictly below the Z2 ceiling is what makes tomorrow's threshold session sharp. No pickups — the grey zone buys nothing.",
+          "hyrox_focus": null
+        },
+        {
+          "day": "Tuesday",
+          "session_type": "run",
+          "title": "Threshold 5x6' + Heavy Lower (double)",
+          "zone": "Threshold",
+          "intensity": "hard",
+          "duration_min": 75,
+          "distance_m": 12000,
+          "prescription": "RUN: 15 min easy warmup -> 5x6 min at threshold (155-163 bpm, 4:48-4:34/km) with 2 min jog recovery -> 10 min cooldown. GYM (separate session, same day): back squat 4x3 @ 100 kg RPE 8; trap-bar deadlift 3x3 @ 130 kg RPE 8; hip thrust 3x8 @ 110 kg. Full 2-3 min rest, explosive concentric, never to failure. Add load on any lift where the top set leaves more than 2 reps in reserve.",
+          "steps": [
+            {
+              "phase": "warmup",
+              "kind": "run",
+              "metric": "15 min easy",
+              "target": "Z1, no faster than 5:22/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "5x 6 min at threshold",
+              "target": "155-163 bpm, 4:48-4:34/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "rest",
+              "metric": "2 min jog between reps",
+              "target": "very easy",
+              "load": null
+            },
+            {
+              "phase": "cooldown",
+              "kind": "run",
+              "metric": "10 min easy",
+              "target": "Z1 or slower",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Back squat 4x3",
+              "target": "RPE 8 (~2 RIR), 3 min rest",
+              "load": "100 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Trap-bar deadlift 3x3",
+              "target": "RPE 8, 3 min rest",
+              "load": "130 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Hip thrust 3x8",
+              "target": "RPE 7-8, 2 min rest, squeeze at lockout",
+              "load": "110 kg"
+            }
+          ],
+          "purpose": "Raise LT2 and load the posterior chain on one consolidated hard day.",
+          "why": "Threshold is the highest-return lever for both goals, and 30 min of work is a full base-week dose without tipping into a session that needs two days to clear. The lift shares the day so the easy days stay genuinely easy; no plyometrics here because explosive work loses most in the same session as a hard run.",
+          "hyrox_focus": null
+        },
+        {
+          "day": "Wednesday",
+          "session_type": "run",
+          "title": "Easy Aerobic",
+          "zone": "Endurance",
+          "intensity": "easy",
+          "duration_min": 45,
+          "distance_m": 8000,
+          "prescription": "45 min easy, HR <=138 bpm. Pure recovery from Tuesday's double.",
+          "steps": [],
+          "purpose": "Recover between the week's two quality days.",
+          "why": "The day after a hard double has to be genuinely easy or the sim on Thursday degrades; this is where the polarized distribution is won or lost.",
+          "hyrox_focus": null
+        },
+        {
+          "day": "Thursday",
+          "session_type": "sim",
+          "title": "Base Compromised Sim (4 rounds)",
+          "zone": "mixed",
+          "intensity": "moderate",
+          "duration_min": 52,
+          "distance_m": 5000,
+          "prescription": "10 min warmup -> 4 rounds of 1000 m at ~4:50-4:55/km straight into one station: R1 sled push 202 kg / 50 m; R2 sled pull 153 kg / 50 m; R3 farmers carry 2x32 kg / 200 m; R4 wall balls 9 kg x 40 to 3.0 m. 5 min jog cooldown.",
+          "steps": [
+            {
+              "phase": "warmup",
+              "kind": "run",
+              "metric": "10 min easy + drills",
+              "target": "Z1",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:50-4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Sled push 50 m",
+              "target": "stay low, short steps",
+              "load": "202 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:50-4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Sled pull 50 m",
+              "target": "hand-over-hand, hips back",
+              "load": "153 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:50-4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Farmers carry 200 m",
+              "target": "one drop maximum",
+              "load": "2x32 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "1000 m compromised",
+              "target": "~4:50-4:55/km",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "station",
+              "metric": "Wall balls x40",
+              "target": "to 3.0 m, aim for unbroken",
+              "load": "9 kg"
+            },
+            {
+              "phase": "cooldown",
+              "kind": "run",
+              "metric": "5 min jog",
+              "target": "very easy",
+              "load": null
+            }
+          ],
+          "purpose": "Train running economy under station-induced fatigue at competition loads.",
+          "why": "Compromised running is the race-specific demand no pure run reproduces, and station loads stay at the Pro standard so the neuromuscular cost matches race day. Four rounds is a base-week dose — enough to keep the pattern, short of the five-round sims that belong in a peak week.",
+          "hyrox_focus": "compromised running"
+        },
+        {
+          "day": "Friday",
+          "session_type": "run",
+          "title": "Easy + Plyo + Heavy Upper (double)",
+          "zone": "Endurance",
+          "intensity": "easy",
+          "duration_min": 65,
+          "distance_m": 8000,
+          "prescription": "RUN: 45 min easy, HR <=138 bpm. GYM (separate session, same day): box jump 4x3 and standing broad jump 3x3, full recovery between sets, maximum intent. Then weighted pull-up 4x4 and overhead press 4x4 at RPE 8. Upper loads are still unbaselined — pick the weight that leaves 1-2 reps in reserve, log what you actually used, and report it so the numbers get fixed in config.",
+          "steps": [
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "45 min easy",
+              "target": "HR <=138 bpm, 5:22/km or slower",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Box jump 4x3",
+              "target": "full recovery, maximum intent, land soft",
+              "load": "bodyweight"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Standing broad jump 3x3",
+              "target": "full recovery between reps",
+              "load": "bodyweight"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Weighted pull-up 4x4",
+              "target": "RPE 8 (~2 RIR) — log the load used",
+              "load": "select for 1-2 RIR"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Overhead press 4x4",
+              "target": "RPE 8 — log the load used",
+              "load": "select for 1-2 RIR"
+            }
+          ],
+          "purpose": "Explosive and upper-body strength on an easy-run day, plus easy volume.",
+          "why": "Plyometrics improve running economy but lose most of their effect when stacked on a hard run, so they belong here on an easy day. Vertical pull and press carry directly to the pulling and overhead stations. Loads are RPE-anchored rather than prescribed in kg because the upper-body baseline has not been reported yet.",
+          "hyrox_focus": "sled pull"
+        },
+        {
+          "day": "Saturday",
+          "session_type": "run",
+          "title": "Long Run",
+          "zone": "Endurance",
+          "intensity": "moderate",
+          "duration_min": 90,
+          "distance_m": 16000,
+          "prescription": "16 km steady, HR <=145 bpm for the first 13 km, then the last 3 km lifted to tempo (147-155 bpm, ~5:04-4:48/km). Check Pa:HR decoupling afterwards — target is under 5%.",
+          "steps": [
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "13 km steady",
+              "target": "HR <=145 bpm, Z2",
+              "load": null
+            },
+            {
+              "phase": "main",
+              "kind": "run",
+              "metric": "3 km at tempo",
+              "target": "147-155 bpm, 5:04-4:48/km",
+              "load": null
+            }
+          ],
+          "purpose": "Build aerobic durability and practise running strong on tired legs.",
+          "why": "The long run is the single biggest contributor to the easy-volume base, and the tempo finish trains holding pace as fatigue accumulates without turning the day into a third hard session. Decoupling under 5% is the read on whether the base is actually deepening.",
+          "hyrox_focus": null
+        },
+        {
+          "day": "Sunday",
+          "session_type": "rest",
+          "title": "Rest",
+          "zone": null,
+          "intensity": "easy",
+          "duration_min": 0,
+          "distance_m": null,
+          "prescription": "Full rest. Mobility and sleep.",
+          "steps": [],
+          "purpose": "Absorb the week.",
+          "why": "Adaptation happens on the rest day; a single full day off is what makes a 58 km week with two quality sessions repeatable rather than a spike.",
           "hyrox_focus": null
         }
       ]
