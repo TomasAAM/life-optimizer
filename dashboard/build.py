@@ -13,7 +13,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from dashboard import metrics, query, render, zones
-from plan import phase
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 load_dotenv(_PROJECT_ROOT / ".env", override=True)
@@ -28,11 +27,13 @@ _OUTPUT_PATH = _PROJECT_ROOT / "public" / "index.html"
 
 
 def _build_plan_view(supabase, activities) -> render.PlanView:
-    """Assemble the training-plan view model from the latest generated week.
+    """Assemble the training-plan view model from the relevant plan week.
 
-    Reads the most recent plan week, its sessions (scored for adherence against
-    actual activities), and the lactate zones. Degrades gracefully to an empty
-    view when no plan has been generated yet.
+    Reads the week the dashboard should be showing (the week in progress, or on
+    a Sunday the week starting tomorrow), its sessions (scored for adherence
+    against actual activities), and the lactate zones. The block overview is
+    anchored to that same week so the two panels never disagree. Degrades
+    gracefully to an empty view when no plan has been generated yet.
 
     Parameters
     ----------
@@ -55,7 +56,7 @@ def _build_plan_view(supabase, activities) -> render.PlanView:
             zones=zones_df, block=[],
         )
 
-    block = query.fetch_plan_block(supabase, phase.current_monday(today).isoformat())
+    block = query.fetch_plan_block(supabase, week["week_start"])
     sessions = query.fetch_planned_sessions(supabase, week["week_start"])
     sessions = metrics.compute_adherence(sessions, activities)
     return render.PlanView(week=week, sessions=sessions, zones=zones_df, block=block)
