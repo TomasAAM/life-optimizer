@@ -8,11 +8,15 @@ rows, so the per-reading HRV table is fetched with explicit pagination.
 from __future__ import annotations
 
 import os
+from datetime import date, timedelta
 
 import pandas as pd
 from supabase import Client, create_client
 
 _PAGE_SIZE = 1000
+
+# ``date.weekday()`` index for Sunday — the last day of a plan week.
+_SUNDAY = 6
 
 
 def get_supabase_client() -> Client:
@@ -135,11 +139,16 @@ def fetch_training_zones(supabase: Client) -> pd.DataFrame:
 
 
 def fetch_current_plan_week(supabase: Client, today_iso: str) -> dict | None:
-    """Fetch the plan-week header for the week in progress.
+    """Fetch the plan-week header for the week worth looking at.
 
-    Returns the most recent week whose Monday is on or before ``today`` (the week
-    currently being trained). Falls back to the earliest upcoming week when the
-    whole plan is still in the future, and to ``None`` when no plan exists.
+    On any day other than Sunday this is the week in progress: the most recent
+    week whose Monday is on or before ``today``. On a **Sunday** the week in
+    progress has no training left in it, so the week starting tomorrow is
+    returned instead when one has been generated - otherwise the current week
+    stands.
+
+    Falls back to the earliest upcoming week when the whole plan is still in the
+    future, and to ``None`` when no plan exists.
 
     Parameters
     ----------
@@ -151,8 +160,21 @@ def fetch_current_plan_week(supabase: Client, today_iso: str) -> dict | None:
     Returns
     -------
     dict or None
-        The current ``training_plan_weeks`` row, or ``None`` if no plan exists.
+        The relevant ``training_plan_weeks`` row, or ``None`` if no plan exists.
     """
+    today = date.fromisoformat(today_iso)
+    if today.weekday() == _SUNDAY:
+        next_monday = (today + timedelta(days=1)).isoformat()
+        ahead = (
+            supabase.table("training_plan_weeks")
+            .select("*")
+            .eq("week_start", next_monday)
+            .limit(1)
+            .execute()
+        )
+        if ahead.data:
+            return ahead.data[0]
+
     current = (
         supabase.table("training_plan_weeks")
         .select("*")
