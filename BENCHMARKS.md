@@ -53,9 +53,10 @@ Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limi
 | **Back squat est-1RM** | From an RPE-8 top set (Epley), don't test true 1RM. | working ~100–110 kg @ RPE 8×3 | progressive | Economy + sled drive; low-rep strength is the main economy lever. |
 | **Trap-bar deadlift est-1RM** | RPE-8 top set. | working 130 kg @ RPE 8×3 | progressive | Posterior-chain power for sleds/carries. |
 | **Hip thrust** | Load @ RPE 7–8×6–8. | 110 kg | progressive | Hip extension for running + sled push. |
-| **Upper: weighted pull-up** | Max reps + weighted 3RM. | — (baseline 2026-07-23) | establish → progress | Vertical pull → sled pull, ski. |
-| **Upper: overhead press / bench** | RPE-8 top set. | — (baseline 2026-07-23) | establish → progress | Press strength → wall ball, burpee push-off. |
-| **Relative strength** | Best lifts ÷ bodyweight. | — | ↑ kg/bw | Power-to-weight is what Hyrox running rewards — absolute kg alone can mislead. |
+| **Upper: weighted pull-up** | Max reps + weighted 3RM. | **bw +5 kg × 4 @ RPE 8** (self-reported 2026-08-08, not a clean test) | close the gap to press strength | Vertical pull → sled pull, ski. The weakest of the three uppers relative to pressing. |
+| **Upper: overhead press** | RPE-8 top set. | **60 kg × 4 @ RPE 8** (self-reported 2026-08-08) | progress | Press strength → wall ball, burpee push-off. |
+| **Upper: dumbbell bench** | RPE-8 top set. | **2×32 kg/hand (70 lb) × 4–6 @ RPE 8** (self-reported 2026-08-08) | progress | Horizontal press → burpee push-off, sled push lockout. |
+| **Relative strength** | Best lifts ÷ bodyweight. | — (**bodyweight not recorded** — needed before this can be computed) | ↑ kg/bw | Power-to-weight is what Hyrox running rewards — absolute kg alone can mislead. |
 
 ### 3. Power
 

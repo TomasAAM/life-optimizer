@@ -1066,7 +1066,7 @@
           "intensity": "easy",
           "duration_min": 50,
           "distance_m": 9000,
-          "prescription": "AM (gym): box jumps 4x3 + hurdle hops 3x5, full recovery; then weighted pull-up 4x4 and overhead press 4x4 at RPE 8 (~2 RIR). No concrete loads are on file for upper work - pick the weight that lands at RPE 8 and LOG WHAT YOU USED so ATHLETE_LOADS can finally be filled in. PM (home treadmill or outdoors): 50 min easy, at or below your easy cap.",
+          "prescription": "AM (gym): box jumps 4x3 + hurdle hops 3x5, full recovery; then weighted pull-up 4x4 @ bodyweight +5 kg, overhead press 4x4 @ 60 kg, dumbbell bench press 3x6 @ 2x32 kg per hand. All at RPE 8 (~2 RIR) - progress the load whenever a top set leaves >2 reps in reserve. PM (home treadmill or outdoors): 50 min easy, at or below your easy cap.",
           "steps": [
             {
               "phase": "main",
@@ -1086,15 +1086,22 @@
               "phase": "main",
               "kind": "strength",
               "metric": "Weighted pull-up 4x4",
-              "target": "RPE 8, ~2 RIR - LOG THE LOAD USED",
-              "load": "RPE 8 (unrecorded)"
+              "target": "RPE 8, ~2 RIR - progress when >2 RIR",
+              "load": "bodyweight +5 kg"
             },
             {
               "phase": "main",
               "kind": "strength",
               "metric": "Overhead press 4x4",
-              "target": "RPE 8, ~2 RIR - LOG THE LOAD USED",
-              "load": "RPE 8 (unrecorded)"
+              "target": "RPE 8, ~2 RIR - progress when >2 RIR",
+              "load": "60 kg"
+            },
+            {
+              "phase": "main",
+              "kind": "strength",
+              "metric": "Dumbbell bench press 3x6",
+              "target": "RPE 8, ~2 RIR",
+              "load": "2x32 kg per hand"
             },
             {
               "phase": "main",
@@ -1105,7 +1112,7 @@
             }
           ],
           "purpose": "Easy km, plyometric maintenance, and the block's upper-body strength touch for ski erg and sled pull.",
-          "why": "Upper-body strength drives the ski erg and sled pull directly and is the least-trained quality on file, so it earns a place even in the biggest week - but on an easy day, in the morning, where it costs nothing. Still prescribed by RPE rather than kilograms because no upper loads have been recorded since the 2026-07-23 baseline was due; logging what gets used here is what makes the next block's prescription concrete. Placed Friday rather than Thursday so it does not compound station fatigue.",
+          "why": "Upper-body strength drives the ski erg and sled pull directly and is the least-trained quality on file, so it earns a place even in the biggest week - but on an easy day, in the morning, where it costs nothing. Now prescribed in concrete kilograms for the first time rather than by RPE alone, since the loads were finally recorded. Vertical pulling gets the lowest relative load of the three, which is the imbalance worth closing: the sled pull and ski erg are both pulling-dominant. Placed Friday rather than Thursday so it does not compound station fatigue.",
           "hyrox_focus": "sled"
         },
         {

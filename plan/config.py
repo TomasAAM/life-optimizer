@@ -122,6 +122,7 @@ STRENGTH_LIBRARY: tuple[str, ...] = (
     "weighted_step_up",
     "pull_up",
     "overhead_press",
+    "dumbbell_bench_press",
 )
 
 # The athlete's target Hyrox division and its official station standards. Station
@@ -138,9 +139,10 @@ HYROX_STANDARDS: dict[str, str] = {
     "burpee_broad_jump": "bodyweight, 80 m",
 }
 # Known athlete capacities — the current working weights the athlete confirmed
-# training on (2026-07-17, re-confirmed in use 2026-07-20). Prescribe barbell
-# lifts from these by RPE and progress the load whenever a top set leaves >2 reps
-# in reserve. Update here as the athlete reports feeling too light/heavy.
+# training on (lower body 2026-07-17, re-confirmed in use 2026-07-20; upper body
+# reported 2026-08-08). Prescribe barbell lifts from these by RPE and progress the
+# load whenever a top set leaves >2 reps in reserve. Update here as the athlete
+# reports feeling too light/heavy.
 ATHLETE_LOADS: dict[str, str] = {
     "back_squat": "100 kg for triples @ RPE ~8 (progress when >2 RIR)",
     "trap_bar_deadlift": "130 kg for top triples @ RPE 8",
@@ -148,6 +150,9 @@ ATHLETE_LOADS: dict[str, str] = {
     "weighted_step_up": "20 kg per hand",
     "wall_balls": "9 kg, ~20 unbroken (build to 25+)",
     "sandbag_lunges": "30 kg comfortable",
+    "pull_up": "bodyweight +5 kg for sets of 4 @ RPE 8",
+    "overhead_press": "60 kg for 4 reps @ RPE 8",
+    "dumbbell_bench_press": "2x32 kg per hand (70 lb) for 4-6 reps @ RPE 8",
 }
 
 # Evidence-based heavy-strength template for running economy (Blagrove 2018;
