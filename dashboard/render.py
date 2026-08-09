@@ -104,27 +104,43 @@ def _methodology_sources_html() -> str:
 
 
 @dataclass(frozen=True)
-class PlanView:
-    """View model for the training-plan section.
+class PlanWeekView:
+    """One week of the block: its header row plus its scored sessions.
 
     Parameters
     ----------
-    week : dict or None
-        The current ``training_plan_weeks`` row (week in progress), or ``None``
-        when no plan exists yet.
+    header : dict
+        The ``training_plan_weeks`` row (phase, weeks_to_race, rationale,
+        methodology, ...).
     sessions : pandas.DataFrame
-        Planned sessions for the current week, with a ``status`` column.
-    zones : pandas.DataFrame
-        Lactate-anchored training zones.
-    block : list of dict
-        The plan-week headers of the current block (from the current week onward),
-        for the block-overview strip.
+        That week's planned sessions, with a ``status`` column.
     """
 
-    week: dict | None
+    header: dict
     sessions: pd.DataFrame
-    zones: pd.DataFrame
-    block: list[dict] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class PlanView:
+    """View model for the training-plan section.
+
+    Every week of the block is rendered in full and toggled client-side, so any
+    week can be opened from the block strip. The page is a static file with no
+    server, so the alternative — fetching a week on demand — is not available.
+
+    Parameters
+    ----------
+    weeks : list of PlanWeekView
+        Every week of the current block, in chronological order.
+    zones : pandas.DataFrame
+        Lactate-anchored training zones (shared across the block).
+    selected_week_start : str
+        ISO Monday of the week shown on load — normally the week in progress.
+    """
+
+    weeks: list[PlanWeekView] = field(default_factory=list)
+    zones: pd.DataFrame = field(default_factory=pd.DataFrame)
+    selected_week_start: str = ""
 
 
 def build_figure(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> go.Figure:
@@ -335,30 +351,33 @@ def _clean_int(value) -> int | None:
     return int(value)
 
 
-def _block_overview(block: list[dict], current_week_start: str) -> str:
-    """Render the current block as a colored week-by-week strip.
+def _block_overview(weeks: list[PlanWeekView], selected_week_start: str) -> str:
+    """Render the block as a strip of buttons, one per week.
 
-    Each cell is one persisted plan week (date, phase, weeks-to-race); the week in
-    progress is outlined. Driven by the stored block rather than recomputed, so it
-    reflects exactly what was generated — including a block that flows across a race.
+    Each cell is one persisted plan week (date, phase, weeks-to-race). Clicking a
+    cell switches the week shown below it; the selected week is outlined. Driven
+    by the stored block rather than recomputed, so it reflects exactly what was
+    generated — including a block that flows across a race.
     """
-    if not block:
+    if not weeks:
         return ""
     cells = []
-    for wk in block:
+    for wv in weeks:
+        wk = wv.header
         week_start = date.fromisoformat(wk["week_start"])
         phase_name = wk.get("phase") or ""
         color = _PHASE_COLOR.get(phase_name, "#94a3b8")
-        is_current = wk["week_start"] == current_week_start
-        border = "2px solid #0f172a" if is_current else "1px solid #e2e8f0"
+        is_selected = wk["week_start"] == selected_week_start
+        cls = "phase-cell selected" if is_selected else "phase-cell"
         wtr = wk.get("weeks_to_race")
         sub = f"{wtr} wk to race" if wtr not in (None, 0) else escape(str(wk.get("target_race") or ""))
         cells.append(
-            f'<div class="phase-cell" style="border:{border}">'
+            f'<button type="button" class="{cls}" data-week="{escape(wk["week_start"])}" '
+            f'aria-pressed="{"true" if is_selected else "false"}">'
             f'<div class="phase-dot" style="background:{color}"></div>'
             f'<div class="phase-wk">{week_start.strftime("%d %b")}</div>'
             f'<div class="phase-name">{escape(phase_name)}</div>'
-            f'<div class="phase-sub">{sub}</div></div>'
+            f'<div class="phase-sub">{sub}</div></button>'
         )
     return f'<div class="phase-strip">{"".join(cells)}</div>'
 
@@ -429,13 +448,22 @@ def _session_steps_html(presc: dict) -> str:
     return f"<div class='seg-list'>{''.join(out)}</div>"
 
 
-def _plan_list(sessions: pd.DataFrame) -> str:
+def _plan_list(sessions: pd.DataFrame, week_key: str) -> str:
     """Render the week's sessions as an expandable list of structured cards.
 
     Each row is scannable (zone dot, title, day/zone/distance, intensity); clicking
     it expands the structured breakdown (warm-up / main set / cool-down or rounds)
     plus the session purpose. Falls back to the free-text prescription when a
     session has no structured ``steps``.
+
+    Parameters
+    ----------
+    sessions : pandas.DataFrame
+        The week's planned sessions.
+    week_key : str
+        The week's ISO Monday, used to namespace the collapsible element ids.
+        Every week of the block is in the DOM at once, so a bare index would
+        collide and expanding one week's session would toggle another's.
     """
     if sessions.empty:
         return "<p>No sessions for this week.</p>"
@@ -467,9 +495,10 @@ def _plan_list(sessions: pd.DataFrame) -> str:
             f"{escape(why)}</div>" if why else ""
         )
 
+        sess_id = f"psess-{week_key}-{i}"
         items.append(
             f"<div class='sess'>"
-            f"<div class='sess-row' data-sess='{i}'>"
+            f"<div class='sess-row' data-sess='{sess_id}'>"
             f"<span class='zdot' style='background:{dot}'></span>"
             f"<div class='sess-main'>"
             f"<div class='sess-title'>{escape(str(r.title or ''))}{focus_html}</div>"
@@ -478,50 +507,91 @@ def _plan_list(sessions: pd.DataFrame) -> str:
             f"<span class='sdot' style='background:{status_color}' title='{status}'></span>"
             f"<span class='chev'>&#9662;</span>"
             f"</div>"
-            f"<div class='sess-body' id='psess{i}'>{_session_steps_html(presc)}"
+            f"<div class='sess-body' id='{sess_id}'>{_session_steps_html(presc)}"
             f"<div class='sess-purpose'>{escape(str(r.purpose or ''))}</div>{why_html}</div>"
             f"</div>"
         )
     return f"<div class='sess-list'>{''.join(items)}</div>"
 
 
+def _week_cards(header: dict, week_index: int, block_len: int) -> str:
+    """Render the four summary cards for one week of the block."""
+    race_iso = header.get("race_date")
+    race_date = date.fromisoformat(race_iso) if race_iso else None
+    # Measured from today, not from the selected week — "until race day" is a real
+    # countdown and must not change just because a different week is being viewed.
+    countdown = (
+        (f"{(race_date - date.today()).days}d", "until race day")
+        if race_date is not None else ("—", "no race scheduled")
+    )
+    cards = [
+        (
+            "Target race",
+            (header.get("target_race") or "none").upper(),
+            race_date.strftime("%d %b %Y") if race_date else "—",
+        ),
+        ("Countdown", countdown[0], countdown[1]),
+        (
+            "Phase",
+            (header.get("phase") or "").title(),
+            f"{header.get('weeks_to_race', 0)} weeks to race",
+        ),
+        ("Block", f"Week {week_index} of {block_len}", "current training block"),
+    ]
+    return "".join(
+        f'<div class="card"><div class="card-label">{label}</div>'
+        f'<div class="card-value">{value}</div><div class="card-sub">{sub}</div></div>'
+        for label, value, sub in cards
+    )
+
+
 def _plan_section(plan: PlanView) -> str:
-    """Render the full training-plan section (cards, strip, table, zones)."""
-    if plan is None or plan.week is None:
+    """Render the full training-plan section (cards, strip, week panels, zones).
+
+    Every week of the block is emitted; only the selected one carries ``active``.
+    Switching weeks is a class swap in the browser, since the page is a static
+    file with nothing to fetch from.
+    """
+    if plan is None or not plan.weeks:
         return (
             "<h2>Training plan</h2><div class='panel'><p>No plan generated yet — "
             "run <code>python -m plan.context</code>, write the block, then "
             "<code>python -m plan.persist</code>.</p></div>"
         )
 
-    week = plan.week
-    race_iso = week.get("race_date")
-    race_date = date.fromisoformat(race_iso) if race_iso else None
-    week_start = date.fromisoformat(week["week_start"])
-    countdown = (
-        (f"{(race_date - date.today()).days}d", "until race day")
-        if race_date is not None else ("—", "no race scheduled")
-    )
-    block = plan.block or [week]
-    week_index = next(
-        (i + 1 for i, wk in enumerate(block) if wk["week_start"] == week["week_start"]), 1
-    )
+    weeks = plan.weeks
+    selected = plan.selected_week_start or weeks[0].header["week_start"]
 
-    cards = [
-        (
-            "Target race",
-            (week.get("target_race") or "none").upper(),
-            race_date.strftime("%d %b %Y") if race_date else "—",
-        ),
-        ("Countdown", countdown[0], countdown[1]),
-        ("Phase", (week.get("phase") or "").title(), f"{week.get('weeks_to_race', 0)} weeks to race"),
-        ("Block", f"Week {week_index} of {len(block)}", "current training block"),
-    ]
-    card_html = "".join(
-        f'<div class="card"><div class="card-label">{label}</div>'
-        f'<div class="card-value">{value}</div><div class="card-sub">{sub}</div></div>'
-        for label, value, sub in cards
-    )
+    card_blocks: list[str] = []
+    week_panels: list[str] = []
+    methodology_blocks: list[str] = []
+
+    for i, wv in enumerate(weeks):
+        header = wv.header
+        key = header["week_start"]
+        active = " active" if key == selected else ""
+        week_start = date.fromisoformat(key)
+
+        card_blocks.append(
+            f'<div class="cards wk-cards{active}" data-week-panel="{escape(key)}">'
+            f"{_week_cards(header, i + 1, len(weeks))}</div>"
+        )
+
+        rationale = escape(str(header.get("rationale") or ""))
+        week_panels.append(
+            f'<div class="panel wk-pane{active}" data-week-panel="{escape(key)}">'
+            f'<div class="section-label">Week of {week_start.strftime("%d %b %Y")}</div>'
+            f'<p class="plan-hint">Click a session to see the full breakdown.</p>'
+            f"{_plan_list(wv.sessions, key)}"
+            f'<p class="rationale"><b>Coach\'s note:</b> {rationale}</p></div>'
+        )
+
+        methodology = escape(str(header.get("methodology") or ""))
+        if methodology:
+            methodology_blocks.append(
+                f'<p class="methodology wk-pane{active}" data-week-panel="{escape(key)}">'
+                f"{methodology}</p>"
+            )
 
     lt1_caveat = ""
     if not plan.zones.empty and _clean_int(plan.zones.iloc[0].get("lt1_hr")) is None:
@@ -530,23 +600,17 @@ def _plan_section(plan: PlanView) -> str:
             "boundary is approximate."
         )
 
-    rationale = escape(str(week.get("rationale") or ""))
-    model = escape(str(week.get("model") or ""))
-    methodology = escape(str(week.get("methodology") or ""))
-    methodology_html = f'<p class="methodology">{methodology}</p>' if methodology else ""
+    model = escape(str(weeks[0].header.get("model") or ""))
+    methodology_html = "".join(methodology_blocks)
 
     return f"""<h2>Training plan</h2>
-  <div class="cards">{card_html}</div>
+  {"".join(card_blocks)}
   <div class="panel">
     <div class="section-label">This block</div>
-    {_block_overview(block, week["week_start"])}
+    <p class="plan-hint">Click a week to see its sessions.</p>
+    {_block_overview(weeks, selected)}
   </div>
-  <div class="panel">
-    <div class="section-label">Week of {week_start.strftime('%d %b %Y')}</div>
-    <p class="plan-hint">Click a session to see the full breakdown.</p>
-    {_plan_list(plan.sessions)}
-    <p class="rationale"><b>Coach's note:</b> {rationale}</p>
-  </div>
+  {"".join(week_panels)}
   <div class="panel">
     <div class="section-label">Methodology &amp; sources</div>
     {methodology_html}
@@ -634,7 +698,16 @@ def render_html(
           text-transform: uppercase; letter-spacing: 0.03em; margin: 4px 6px 10px; }}
   .phase-strip {{ display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 8px; }}
   .phase-cell {{ flex: 0 0 auto; min-width: 78px; border-radius: 10px; padding: 8px 10px;
-          text-align: center; background: #fff; }}
+          text-align: center; background: #fff; border: 1px solid #e2e8f0;
+          font: inherit; color: inherit; cursor: pointer; }}
+  .phase-cell:hover {{ background: #f8fafc; border-color: #cbd5e1; }}
+  .phase-cell:focus-visible {{ outline: 2px solid #2563eb; outline-offset: 2px; }}
+  .phase-cell.selected {{ border: 2px solid #0f172a; padding: 7px 9px; }}
+  /* Every block week is in the DOM; only the selected one is shown. */
+  .wk-cards {{ display: none; }}
+  .wk-cards.active {{ display: grid; }}
+  .wk-pane {{ display: none; }}
+  .wk-pane.active {{ display: block; }}
   .phase-dot {{ width: 100%; height: 5px; border-radius: 3px; margin-bottom: 6px; }}
   .phase-wk {{ font-size: 0.78rem; font-weight: 600; }}
   .phase-name {{ font-size: 0.72rem; color: #64748b; text-transform: capitalize; }}
@@ -779,7 +852,20 @@ def render_html(
   document.querySelectorAll('.sess-row').forEach(function (row) {{
     row.addEventListener('click', function () {{
       row.classList.toggle('open');
-      document.getElementById('psess' + row.dataset.sess).classList.toggle('open');
+      document.getElementById(row.dataset.sess).classList.toggle('open');
+    }});
+  }});
+  document.querySelectorAll('.phase-cell').forEach(function (cell) {{
+    cell.addEventListener('click', function () {{
+      var wk = cell.dataset.week;
+      document.querySelectorAll('.phase-cell').forEach(function (c) {{
+        var on = c.dataset.week === wk;
+        c.classList.toggle('selected', on);
+        c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }});
+      document.querySelectorAll('[data-week-panel]').forEach(function (p) {{
+        p.classList.toggle('active', p.dataset.weekPanel === wk);
+      }});
     }});
   }});
 </script>

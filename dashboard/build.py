@@ -28,11 +28,12 @@ _OUTPUT_PATH = _PROJECT_ROOT / "public" / "index.html"
 
 
 def _build_plan_view(supabase, activities) -> render.PlanView:
-    """Assemble the training-plan view model from the latest generated week.
+    """Assemble the training-plan view model for the whole current block.
 
-    Reads the most recent plan week, its sessions (scored for adherence against
-    actual activities), and the lactate zones. Degrades gracefully to an empty
-    view when no plan has been generated yet.
+    Reads every week of the block with its sessions (scored for adherence against
+    actual activities) plus the lactate zones, so the rendered page can switch
+    between weeks client-side. Degrades gracefully to an empty view when no plan
+    has been generated yet.
 
     Parameters
     ----------
@@ -48,17 +49,29 @@ def _build_plan_view(supabase, activities) -> render.PlanView:
     """
     zones_df = query.fetch_training_zones(supabase)
     today = date.today()
-    week = query.fetch_current_plan_week(supabase, today.isoformat())
-    if week is None:
-        return render.PlanView(
-            week=None, sessions=query.fetch_planned_sessions(supabase, ""),
-            zones=zones_df, block=[],
-        )
+    current = query.fetch_current_plan_week(supabase, today.isoformat())
+    if current is None:
+        return render.PlanView(weeks=[], zones=zones_df, selected_week_start="")
 
-    block = query.fetch_plan_block(supabase, phase.current_monday(today).isoformat())
-    sessions = query.fetch_planned_sessions(supabase, week["week_start"])
-    sessions = metrics.compute_adherence(sessions, activities)
-    return render.PlanView(week=week, sessions=sessions, zones=zones_df, block=block)
+    headers = query.fetch_plan_block(supabase, phase.current_monday(today).isoformat())
+    # The block reads forward from this Monday, so it misses the current week when
+    # that week predates the persisted block; fall back to showing it alone.
+    if not any(h["week_start"] == current["week_start"] for h in headers):
+        headers = [current, *headers]
+
+    weeks = [
+        render.PlanWeekView(
+            header=header,
+            sessions=metrics.compute_adherence(
+                query.fetch_planned_sessions(supabase, header["week_start"]), activities
+            ),
+        )
+        for header in headers
+    ]
+    logger.info("Loaded %d plan weeks for the block", len(weeks))
+    return render.PlanView(
+        weeks=weeks, zones=zones_df, selected_week_start=current["week_start"]
+    )
 
 
 def main() -> None:
