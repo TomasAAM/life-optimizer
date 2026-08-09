@@ -56,7 +56,7 @@ Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limi
 | **Upper: weighted pull-up** | Max reps + weighted 3RM. | **bw +5 kg × 4 @ RPE 8** (self-reported 2026-08-08, not a clean test) | close the gap to press strength | Vertical pull → sled pull, ski. The weakest of the three uppers relative to pressing. |
 | **Upper: overhead press** | RPE-8 top set. | **60 kg × 4 @ RPE 8** (self-reported 2026-08-08) | progress | Press strength → wall ball, burpee push-off. |
 | **Upper: dumbbell bench** | RPE-8 top set. | **2×32 kg/hand (70 lb) × 4–6 @ RPE 8** (self-reported 2026-08-08) | progress | Horizontal press → burpee push-off, sled push lockout. |
-| **Relative strength** | Best lifts ÷ bodyweight. | — (**bodyweight not recorded** — needed before this can be computed) | ↑ kg/bw | Power-to-weight is what Hyrox running rewards — absolute kg alone can mislead. |
+| **Relative strength** | Best lifts ÷ bodyweight. | **bodyweight ~75 kg** (2026-08-08) → trap-bar 1.73× · hip thrust 1.47× · squat 1.33× · pull-up 1.07× (bw+5) · DB bench 0.85× · OHP 0.80× — all from *working* loads, not 1RM | ↑ kg/bw at stable bodyweight | Power-to-weight is what Hyrox running rewards — absolute kg alone can mislead. |
 
 ### 3. Power
 

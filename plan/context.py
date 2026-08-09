@@ -27,6 +27,7 @@ from dotenv import load_dotenv
 from dashboard import query
 from plan import phase
 from plan.config import (
+    ATHLETE_BODYWEIGHT_KG,
     ATHLETE_LOADS,
     DEFAULT_CONFIG,
     HYROX_DIVISION,
@@ -306,6 +307,7 @@ bodyweight circuits.
 
 LOADS ({HYROX_DIVISION}) — prescribe station work AT these competition standards (the athlete handles them):
 {chr(10).join(f"  {k}: {v}" for k, v in HYROX_STANDARDS.items())}
+  Athlete bodyweight: {ATHLETE_BODYWEIGHT_KG:.0f} kg — read the loads below as relative strength.
   Known athlete capacity: {"; ".join(f"{k} {v}" for k, v in ATHLETE_LOADS.items())}.
   STRENGTH STRUCTURE (evidence-based): {STRENGTH_TEMPLATE}
 

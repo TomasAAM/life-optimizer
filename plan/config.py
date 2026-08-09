@@ -138,6 +138,12 @@ HYROX_STANDARDS: dict[str, str] = {
     "rowing": "1000 m",
     "burpee_broad_jump": "bodyweight, 80 m",
 }
+# Athlete bodyweight (kg), reported 2026-08-08. Needed to read the strength loads
+# below as relative strength — power-to-weight is what the running half of Hyrox
+# rewards, so absolute kilograms alone mislead. Also makes bodyweight-referenced
+# prescriptions (weighted pull-ups, burpee broad jumps) interpretable.
+ATHLETE_BODYWEIGHT_KG = 75.0
+
 # Known athlete capacities — the current working weights the athlete confirmed
 # training on (lower body 2026-07-17, re-confirmed in use 2026-07-20; upper body
 # reported 2026-08-08). Prescribe barbell lifts from these by RPE and progress the
