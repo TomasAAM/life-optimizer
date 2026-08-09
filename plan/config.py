@@ -76,7 +76,9 @@ class PlanConfig:
     base_weekly_km : float
         The athlete's normal base weekly running volume (km). Phase-scaled into a
         weekly-km target so runs are prescribed by volume, not arbitrary minutes.
-        Held near base year-round for the undated 21k (standing readiness).
+        This is the single knob that sets the ceiling for the entire macrocycle —
+        the phase multipliers only redistribute around it, they never grow it, so
+        a volume ramp has to be driven by raising this value block over block.
     """
 
     races: tuple[Race, ...]
@@ -183,5 +185,9 @@ DEFAULT_CONFIG = PlanConfig(
     secondary_goal="21k",
     goal_weighting="equal",
     gym_access="full",
-    base_weekly_km=53.0,
+    # Raised 53 -> 62 on 2026-08-08 for the Nov 14 macrocycle. Running is the gap
+    # to the Pro field and the old value capped the whole cycle near 61 km, below
+    # the ~65 km the goal needs. Athlete chose the aggressive step over a phased
+    # ramp; he self-regulates on the day, which is the only check on overshoot.
+    base_weekly_km=62.0,
 )

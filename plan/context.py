@@ -297,6 +297,10 @@ strength/functional; the rest are rest days.
   Default rest day(s): {", ".join(cfg.rest_days)}. Long/endurance run on {cfg.long_run_day}.
   Gym access: {cfg.gym_access} — program heavy barbell and explosive/plyometric work, not only \
 bodyweight circuits.
+  Gym frequency: ONE gym visit available EVERY day, so a gym session can be placed on any day.
+  Home treadmill: running is always available at home independent of the gym visit. The natural
+  double is therefore GYM in the morning + RUN at home in the afternoon. Prefer splitting a high-km
+  day into two shorter runs (AM/PM) over one oversized run — same km, lower per-session tissue load.
   Hyrox stations: {", ".join(HYROX_STATIONS)}.
   Strength/explosive movements: {", ".join(STRENGTH_LIBRARY)}.
 
