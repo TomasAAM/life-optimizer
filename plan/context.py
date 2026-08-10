@@ -298,7 +298,12 @@ strength/functional; the rest are rest days.
   Default rest day(s): {", ".join(cfg.rest_days)}. Long/endurance run on {cfg.long_run_day}.
   Gym access: {cfg.gym_access} — program heavy barbell and explosive/plyometric work, not only \
 bodyweight circuits.
+  EQUIPMENT: FREE WEIGHTS ONLY — barbell, dumbbell, kettlebell, bodyweight, bands. Do NOT prescribe \
+cable or selectorized machines (lat pulldown, pec deck, leg press, cable rows). The Hyrox stations \
+(ski erg, rower, sleds) are the only permitted exception, since they are the event itself.
   Gym frequency: ONE gym visit available EVERY day, so a gym session can be placed on any day.
+  A gym trip must be WORTH THE TRIP: if a day includes a gym session, give it a full session \
+(~45-60 min, roughly 5-7 movements), not a 20-minute accessory add-on.
   Home treadmill: running is always available at home independent of the gym visit. The natural
   double is therefore GYM in the morning + RUN at home in the afternoon. Prefer splitting a high-km
   day into two shorter runs (AM/PM) over one oversized run — same km, lower per-session tissue load.
