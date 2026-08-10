@@ -13,7 +13,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from dashboard import metrics, query, render, zones
-from plan import phase
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 load_dotenv(_PROJECT_ROOT / ".env", override=True)
@@ -30,10 +29,13 @@ _OUTPUT_PATH = _PROJECT_ROOT / "public" / "index.html"
 def _build_plan_view(supabase, activities) -> render.PlanView:
     """Assemble the training-plan view model for the whole current block.
 
-    Reads every week of the block with its sessions (scored for adherence against
-    actual activities) plus the lactate zones, so the rendered page can switch
-    between weeks client-side. Degrades gracefully to an empty view when no plan
-    has been generated yet.
+    Reads every week of the block from the week the dashboard should be showing
+    onward — the week in progress, or on a Sunday the week starting tomorrow —
+    each with its sessions scored for adherence against actual activities, plus
+    the lactate zones. Every week is loaded so the rendered page can switch
+    between them client-side, and the block is anchored to the displayed week so
+    the strip and the session list never disagree. Degrades gracefully to an
+    empty view when no plan has been generated yet.
 
     Parameters
     ----------
@@ -53,12 +55,10 @@ def _build_plan_view(supabase, activities) -> render.PlanView:
     if current is None:
         return render.PlanView(weeks=[], zones=zones_df, selected_week_start="")
 
-    headers = query.fetch_plan_block(supabase, phase.current_monday(today).isoformat())
-    # The block reads forward from this Monday, so it misses the current week when
-    # that week predates the persisted block; fall back to showing it alone.
-    if not any(h["week_start"] == current["week_start"] for h in headers):
-        headers = [current, *headers]
-
+    # Anchored to the displayed week, not to today's Monday, so the selected week
+    # is always the first cell of the strip — including on a Sunday, when the
+    # displayed week is the one starting tomorrow.
+    headers = query.fetch_plan_block(supabase, current["week_start"])
     weeks = [
         render.PlanWeekView(
             header=header,
