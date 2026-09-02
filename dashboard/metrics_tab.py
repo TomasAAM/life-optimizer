@@ -21,6 +21,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from dashboard import activity_metrics as am
+from dashboard import theme
 from plan.pace import seconds_to_pace
 
 _COLOR_KM = "#2563eb"       # blue   - distance bars
@@ -49,17 +50,32 @@ _VOLUME_DIV_ID = "volume-chart"
 _WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 # Light grey for a rest day, deepening blue with distance.
+# Rest days are a translucent neutral rather than a light grey, so the cell reads
+# as "empty" against warm paper and against near-black alike.
 _CALENDAR_SCALE = [
-    [0.0, "#f1f5f9"], [0.01, "#dbeafe"], [0.35, "#93c5fd"],
-    [0.7, "#3b82f6"], [1.0, "#1d4ed8"],
+    [0.0, "rgba(125, 132, 145, 0.16)"], [0.01, "#BFD8F5"], [0.35, "#7FB3F0"],
+    [0.7, "#3D7BE0"], [1.0, "#1F4FB5"],
 ]
 
-_LAYOUT = dict(
-    template="plotly_white",
-    margin=dict(l=50, r=30, t=50, b=40),
-    hovermode="closest",
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-)
+def _layout(**overrides) -> dict:
+    """Return the shared chart layout with this tab's margins and legend applied.
+
+    Parameters
+    ----------
+    **overrides
+        Per-figure layout keys, typically ``height`` and ``title``.
+
+    Returns
+    -------
+    dict
+        Keyword arguments for ``Figure.update_layout``.
+    """
+    return theme.chart_layout(
+        margin=dict(l=50, r=30, t=58, b=40),
+        hovermode="closest",
+        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1),
+        **overrides,
+    )
 
 
 def build_volume_figure(runs: pd.DataFrame, today: date) -> go.Figure:
@@ -121,7 +137,7 @@ def build_volume_figure(runs: pd.DataFrame, today: date) -> go.Figure:
             secondary_y=True,
         )
 
-    fig.update_layout(height=380, title="Running volume", **_LAYOUT)
+    fig.update_layout(**_layout(height=380, title="Running volume"))
     fig.update_yaxes(title_text="Distance (km)", secondary_y=False, rangemode="tozero")
     fig.update_yaxes(
         title_text="Moving time (h)", secondary_y=True,
@@ -190,7 +206,7 @@ def build_cumulative_figure(runs: pd.DataFrame, today: date) -> go.Figure:
                     )
                 )
 
-    fig.update_layout(height=320, title=f"{today.year} cumulative distance", **_LAYOUT)
+    fig.update_layout(**_layout(height=320, title=f"{today.year} cumulative distance"))
     fig.update_yaxes(title_text="Distance (km)", rangemode="tozero")
     return fig
 
@@ -235,7 +251,7 @@ def build_calendar_figure(runs: pd.DataFrame, today: date) -> go.Figure:
             )
         )
 
-    fig.update_layout(height=300, title="Daily distance", **_LAYOUT)
+    fig.update_layout(**_layout(height=300, title="Daily distance"))
     fig.update_yaxes(autorange="reversed")
     return fig
 
@@ -323,7 +339,7 @@ def build_pace_figure(trend: pd.DataFrame, monthly: pd.DataFrame) -> go.Figure:
     ticks, tick_text = _pace_ticks(
         trend["pace_s_km"].dropna() if not trend.empty else pd.Series(dtype=float)
     )
-    fig.update_layout(height=400, title="Pace per run", **_LAYOUT)
+    fig.update_layout(**_layout(height=400, title="Pace per run"))
     fig.update_yaxes(
         title_text="Pace (min/km)",
         autorange="reversed",
@@ -366,7 +382,7 @@ def build_efficiency_figure(efficiency: pd.DataFrame) -> go.Figure:
             )
         )
 
-    fig.update_layout(height=300, title="Aerobic efficiency", **_LAYOUT)
+    fig.update_layout(**_layout(height=300, title="Aerobic efficiency"))
     fig.update_yaxes(title_text="Metres per minute per bpm")
     return fig
 

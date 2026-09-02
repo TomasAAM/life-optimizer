@@ -25,6 +25,8 @@ from dataclasses import dataclass
 
 import plotly.graph_objects as go
 
+from dashboard import theme
+
 # Common bpm axis for the band chart (covers easy through maximal for this athlete).
 _AXIS_MIN = 100
 _AXIS_MAX = 200
@@ -154,19 +156,21 @@ def build_zone_comparison_figure(systems: list[ZoneSystem] = SYSTEMS) -> go.Figu
     # Reference line at the lab-measured threshold.
     fig.add_vline(
         x=LAB_LT2_HR,
-        line=dict(color="#0f172a", width=2, dash="dash"),
+        line=dict(color=theme.COLOR_REFERENCE, width=2, dash="dash"),
         annotation_text=f"Lab threshold {LAB_LT2_HR}",
         annotation_position="top",
         annotation_font_size=11,
+        annotation_font_color=theme.COLOR_REFERENCE,
     )
 
     fig.update_layout(
-        barmode="overlay",
-        height=300,
-        template="plotly_white",
-        margin=dict(l=120, r=30, t=40, b=40),
-        xaxis=dict(title="Heart rate (bpm)", range=[_AXIS_MIN, _AXIS_MAX]),
-        yaxis=dict(categoryorder="array", categoryarray=[s.name for s in order]),
+        **theme.chart_layout(
+            barmode="overlay",
+            height=300,
+            margin=dict(l=120, r=30, t=40, b=40),
+            xaxis=dict(title="Heart rate (bpm)", range=[_AXIS_MIN, _AXIS_MAX]),
+            yaxis=dict(categoryorder="array", categoryarray=[s.name for s in order]),
+        )
     )
     return fig
 
@@ -323,25 +327,27 @@ def build_pace_comparison_figure(systems: list[PaceSystem] = PACE_SYSTEMS) -> go
 
     fig.add_vline(
         x=LAB_LT2_PACE_S,
-        line=dict(color="#0f172a", width=2, dash="dash"),
+        line=dict(color=theme.COLOR_REFERENCE, width=2, dash="dash"),
         annotation_text=f"Lab threshold {format_pace(LAB_LT2_PACE_S)}",
         annotation_position="top",
         annotation_font_size=11,
+        annotation_font_color=theme.COLOR_REFERENCE,
     )
 
     tickvals = list(range(_PACE_AXIS_FAST, _PACE_AXIS_SLOW + 1, 30))
     fig.update_layout(
-        barmode="overlay",
-        height=240,
-        template="plotly_white",
-        margin=dict(l=120, r=30, t=40, b=40),
-        xaxis=dict(
-            title="Pace (min/km)",
-            range=[_PACE_AXIS_SLOW, _PACE_AXIS_FAST],  # descending → faster on the right
-            tickvals=tickvals,
-            ticktext=[format_pace(v) for v in tickvals],
-        ),
-        yaxis=dict(categoryorder="array", categoryarray=[s.name for s in order]),
+        **theme.chart_layout(
+            barmode="overlay",
+            height=240,
+            margin=dict(l=120, r=30, t=40, b=40),
+            xaxis=dict(
+                title="Pace (min/km)",
+                range=[_PACE_AXIS_SLOW, _PACE_AXIS_FAST],  # descending → faster on the right
+                tickvals=tickvals,
+                ticktext=[format_pace(v) for v in tickvals],
+            ),
+            yaxis=dict(categoryorder="array", categoryarray=[s.name for s in order]),
+        )
     )
     return fig
 

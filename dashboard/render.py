@@ -16,35 +16,34 @@ import plotly.graph_objects as go
 from plotly.offline import get_plotlyjs_version
 from plotly.subplots import make_subplots
 
-from dashboard import zones
+from dashboard import styles, theme, zones
 from dashboard.metrics import CTL_WARMUP_DAYS, ReadinessSnapshot
 from plan.pace import seconds_to_pace
 
-_COLOR_CTL = "#2563eb"   # blue  - fitness
-_COLOR_ATL = "#f97316"   # orange - fatigue
-_COLOR_TSB = "#16a34a"   # green - form
-_COLOR_LOAD = "#cbd5e1"  # grey  - daily load bars
-_COLOR_HRV = "#7c3aed"   # violet - nightly HRV
-_COLOR_BAND = "rgba(124, 58, 237, 0.15)"  # HRV baseline band fill
+_COLOR_CTL = theme.COLOR_CTL     # blue   - fitness
+_COLOR_ATL = theme.COLOR_ATL     # orange - fatigue
+_COLOR_TSB = theme.COLOR_TSB     # green  - form
+_COLOR_LOAD = theme.COLOR_LOAD   # grey   - daily load bars
+_COLOR_HRV = theme.COLOR_HRV     # violet - nightly HRV
+_COLOR_BAND = theme.COLOR_BAND   # HRV baseline band fill
 
 # Colors for the periodization strip and the session status badges.
 _PHASE_COLOR = {
     "base": "#0ea5e9", "build": "#2563eb", "peak": "#f97316",
     "taper": "#16a34a", "off": "#94a3b8",
 }
-_STATUS_COLOR = {
-    "done": "#16a34a", "missed": "#dc2626", "upcoming": "#94a3b8", "rest": "#cbd5e1",
+# Status and intensity are tinted surfaces rather than saturated marks, so they
+# carry a CSS class instead of an inline colour — an inline style cannot answer
+# ``prefers-color-scheme``, and these need a different tint per scheme.
+_STATUS_CLASS = {
+    "done": "s-done", "missed": "s-missed", "upcoming": "s-upcoming", "rest": "s-rest",
 }
-# Zone accent dot (easiest → hardest) and intensity pill (bg, text).
+# Zone accent dot, easiest → hardest. Saturated data marks: identical in both schemes.
 _ZONE_DOT = {
     "Recovery": "#639922", "Endurance": "#97C459", "Tempo": "#EF9F27",
     "Threshold": "#D85A30", "VO2max": "#E24B4A", "mixed": "#64748b",
 }
-_INTENSITY_BADGE = {
-    "hard": ("#fef2f2", "#dc2626"),
-    "moderate": ("#fffbeb", "#b45309"),
-    "easy": ("#f0fdf4", "#16a34a"),
-}
+_INTENSITY_CLASS = {"hard": "i-hard", "moderate": "i-moderate", "easy": "i-easy"}
 # Runna-style phase bands (saturated) and per-segment type tags.
 _PHASE_BAND = {
     "warmup": ("Warm-up", "#e0683a"),
@@ -84,22 +83,114 @@ _METHODOLOGY_SOURCES = [
      "Acute responses & determinants in Hyrox 2025 (Frontiers) — limited literature", "emerging",
      "https://pmc.ncbi.nlm.nih.gov/articles/PMC11994925/"),
 ]
-_TIER_BADGE = {
-    "strong": ("#f0fdf4", "#16a34a"),
-    "contested": ("#fffbeb", "#b45309"),
-    "emerging": ("#f1f5f9", "#475569"),
-}
+_TIER_CLASS = {"strong": "t-strong", "contested": "t-contested", "emerging": "t-emerging"}
+
+# The page's behaviour, kept out of the document f-string so the braces need no
+# doubling. ``__CHART_THEME__`` is substituted by :func:`_page_script`.
+_PAGE_SCRIPT = """
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      window.dispatchEvent(new Event('resize'));  // let Plotly size the hidden chart
+    });
+  });
+  document.querySelectorAll('.gran-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var chart = document.getElementById('volume-chart');
+      if (!chart) { return; }
+      var order = ['week', 'month', 'year'];
+      var visible = [];
+      order.forEach(function (g) {
+        var on = g === btn.dataset.gran;
+        visible.push(on, on);  // one bar trace and one line trace per granularity
+      });
+      Plotly.restyle(chart, {visible: visible});
+      Plotly.relayout(chart, {'yaxis.autorange': true, 'yaxis2.autorange': true});
+      document.querySelectorAll('.gran-btn').forEach(function (b) {
+        b.classList.toggle('active', b === btn);
+      });
+    });
+  });
+  document.querySelectorAll('.sess-row').forEach(function (row) {
+    row.addEventListener('click', function () {
+      row.classList.toggle('open');
+      document.getElementById(row.dataset.sess).classList.toggle('open');
+    });
+  });
+  document.querySelectorAll('.phase-cell').forEach(function (cell) {
+    cell.addEventListener('click', function () {
+      var wk = cell.dataset.week;
+      document.querySelectorAll('.phase-cell').forEach(function (c) {
+        var on = c.dataset.week === wk;
+        c.classList.toggle('selected', on);
+        c.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      document.querySelectorAll('[data-week-panel]').forEach(function (p) {
+        p.classList.toggle('active', p.dataset.weekPanel === wk);
+      });
+    });
+  });
+
+  // Plotly bakes its colours into the document at build time, so the figures are
+  // recoloured here to match the scheme the browser actually resolved — and again
+  // whenever the OS flips it. Axis keys are read off each figure rather than
+  // assumed, so a subplot gains no phantom axes.
+  var CHART_THEME = __CHART_THEME__;
+  var darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  var AXIS_KEY = /^[xy]axis[0-9]*$/;
+
+  function applyChartTheme() {
+    var t = CHART_THEME[darkQuery.matches ? 'dark' : 'light'];
+    document.querySelectorAll('.js-plotly-plot').forEach(function (gd) {
+      if (!gd.layout) { return; }
+      var update = {};
+      Object.keys(t.figure).forEach(function (k) { update[k] = t.figure[k]; });
+      Object.keys(gd.layout).forEach(function (key) {
+        if (!AXIS_KEY.test(key)) { return; }
+        Object.keys(t.axis).forEach(function (prop) {
+          update[key + '.' + prop] = t.axis[prop];
+        });
+        if (gd.layout[key].rangeslider) {
+          update[key + '.rangeslider.bgcolor'] = 'rgba(0,0,0,0)';
+          update[key + '.rangeslider.bordercolor'] = t.axis.linecolor;
+        }
+      });
+      Plotly.relayout(gd, update);
+    });
+  }
+
+  applyChartTheme();
+  darkQuery.addEventListener('change', applyChartTheme);
+
+  // Retire the entrance animation once it has played, so switching tabs shows
+  // its data immediately instead of replaying a stagger.
+  window.setTimeout(function () { document.body.classList.remove('intro'); }, 900);
+"""
+
+
+def _page_script() -> str:
+    """Return the page's JavaScript with the chart palettes substituted in.
+
+    Returns
+    -------
+    str
+        Script body for the document's single inline ``<script>`` element.
+    """
+    return _PAGE_SCRIPT.replace("__CHART_THEME__", theme.chart_theme_js())
 
 
 def _methodology_sources_html() -> str:
     """Render the static, vetted sources list (claim, citation link, evidence tier)."""
     rows = []
     for claim, cite, tier, url in _METHODOLOGY_SOURCES:
-        bg, fg = _TIER_BADGE.get(tier, ("#f1f5f9", "#475569"))
+        tier_cls = _TIER_CLASS.get(tier, "t-emerging")
         rows.append(
             f"<div class='src'><div class='src-main'><div class='src-claim'>{escape(claim)}</div>"
             f"<a class='src-cite' href='{escape(url)}' target='_blank' rel='noopener'>{escape(cite)}</a></div>"
-            f"<span class='tier' style='background:{bg};color:{fg}'>{tier}</span></div>"
+            f"<span class='tier {tier_cls}'>{tier}</span></div>"
         )
     return f"<div class='src-list'>{''.join(rows)}</div>"
 
@@ -293,12 +384,13 @@ def build_figure(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> go.Figu
     fig.update_xaxes(rangeslider=dict(visible=True, thickness=0.05), row=2, col=1)
 
     fig.update_layout(
-        height=760,
-        template="plotly_white",
-        hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.04, xanchor="left", x=0),
-        margin=dict(l=60, r=30, t=70, b=30),
-        barmode="overlay",
+        **theme.chart_layout(
+            height=760,
+            hovermode="x unified",
+            legend=dict(orientation="h", yanchor="bottom", y=1.075, xanchor="left", x=0),
+            margin=dict(l=60, r=30, t=96, b=30),
+            barmode="overlay",
+        )
     )
     return fig
 
@@ -486,9 +578,9 @@ def _plan_list(sessions: pd.DataFrame, week_key: str) -> str:
         focus = getattr(r, "hyrox_focus", None)
         focus_html = f"<span class='focus'>{escape(str(focus))}</span>" if focus else ""
         dot = _ZONE_DOT.get(r.zone, "#94a3b8")
-        bg, fg = _INTENSITY_BADGE.get(r.intensity, ("#f1f5f9", "#475569"))
+        intensity_cls = _INTENSITY_CLASS.get(r.intensity, "i-none")
         status = getattr(r, "status", "upcoming")
-        status_color = _STATUS_COLOR.get(status, "#cbd5e1")
+        status_cls = _STATUS_CLASS.get(status, "s-rest")
 
         why = str(presc.get("why", "") or "")
         why_html = (
@@ -504,8 +596,8 @@ def _plan_list(sessions: pd.DataFrame, week_key: str) -> str:
             f"<div class='sess-main'>"
             f"<div class='sess-title'>{escape(str(r.title or ''))}{focus_html}</div>"
             f"<div class='sess-meta'>{' · '.join(meta)}</div></div>"
-            f"<span class='ibadge' style='background:{bg};color:{fg}'>{escape(str(r.intensity or ''))}</span>"
-            f"<span class='sdot' style='background:{status_color}' title='{status}'></span>"
+            f"<span class='ibadge {intensity_cls}'>{escape(str(r.intensity or ''))}</span>"
+            f"<span class='sdot {status_cls}' title='{status}'></span>"
             f"<span class='chev'>&#9662;</span>"
             f"</div>"
             f"<div class='sess-body' id='{sess_id}'>{_session_steps_html(presc)}"
@@ -673,145 +765,29 @@ def render_html(
     metrics_section = metrics_html or (
         "<h2>Metrics</h2><div class='panel'><p>No metrics available yet.</p></div>"
     )
+    stylesheet = styles.stylesheet()
+    page_script = _page_script()
+    fonts_href = theme.GOOGLE_FONTS_HREF
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Training Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="{fonts_href}">
 <script src="https://cdn.plot.ly/plotly-{get_plotlyjs_version()}.min.js" charset="utf-8"></script>
-<style>
-  :root {{ color-scheme: light; }}
-  body {{ font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-         margin: 0; background: #f8fafc; color: #0f172a; }}
-  .wrap {{ max-width: 1100px; margin: 0 auto; padding: 24px 18px 60px; }}
-  h1 {{ font-size: 1.5rem; margin: 0 0 2px; }}
-  .as-of {{ color: #64748b; font-size: 0.9rem; margin-bottom: 20px; }}
-  .cards {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-           gap: 12px; margin-bottom: 24px; }}
-  .card {{ background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-          padding: 16px 18px; }}
-  .card-label {{ font-size: 0.8rem; color: #64748b; }}
-  .card-value {{ font-size: 1.8rem; font-weight: 600; margin: 4px 0; }}
-  .card-sub {{ font-size: 0.8rem; color: #475569; }}
-  .panel {{ background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
-           padding: 10px; margin-bottom: 24px; }}
-  h2 {{ font-size: 1.1rem; margin: 8px 4px 12px; }}
-  table.weekly {{ width: 100%; border-collapse: collapse; font-size: 0.92rem; }}
-  table.weekly th, table.weekly td {{ text-align: left; padding: 8px 10px;
-          border-bottom: 1px solid #e2e8f0; }}
-  table.weekly th {{ color: #64748b; font-weight: 600; }}
-  table.weekly tr:first-child td {{ font-weight: 600; }}
-  .section-label {{ font-size: 0.8rem; color: #64748b; font-weight: 600;
-          text-transform: uppercase; letter-spacing: 0.03em; margin: 4px 6px 10px; }}
-  .phase-strip {{ display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 8px; }}
-  .phase-cell {{ flex: 0 0 auto; min-width: 78px; border-radius: 10px; padding: 8px 10px;
-          text-align: center; background: #fff; border: 1px solid #e2e8f0;
-          font: inherit; color: inherit; cursor: pointer; }}
-  .phase-cell:hover {{ background: #f8fafc; border-color: #cbd5e1; }}
-  .phase-cell:focus-visible {{ outline: 2px solid #2563eb; outline-offset: 2px; }}
-  .phase-cell.selected {{ border: 2px solid #0f172a; padding: 7px 9px; }}
-  /* Every block week is in the DOM; only the selected one is shown. */
-  .wk-cards {{ display: none; }}
-  .wk-cards.active {{ display: grid; }}
-  .wk-pane {{ display: none; }}
-  .wk-pane.active {{ display: block; }}
-  .phase-dot {{ width: 100%; height: 5px; border-radius: 3px; margin-bottom: 6px; }}
-  .phase-wk {{ font-size: 0.78rem; font-weight: 600; }}
-  .phase-name {{ font-size: 0.72rem; color: #64748b; text-transform: capitalize; }}
-  .phase-sub {{ font-size: 0.66rem; color: #94a3b8; margin-top: 2px; }}
-  .plan-hint {{ font-size: 0.78rem; color: #94a3b8; margin: -2px 6px 12px; }}
-  .sess-list {{ display: flex; flex-direction: column; gap: 8px; }}
-  .sess {{ border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }}
-  .sess-row {{ display: flex; align-items: center; gap: 12px; padding: 12px 14px;
-          cursor: pointer; background: #fff; }}
-  .sess-row:hover {{ background: #f8fafc; }}
-  .zdot {{ width: 10px; height: 10px; border-radius: 50%; flex: none; }}
-  .sess-main {{ flex: 1; min-width: 0; }}
-  .sess-title {{ font-size: 0.95rem; font-weight: 600; }}
-  .sess-meta {{ font-size: 0.8rem; color: #64748b; margin-top: 2px; }}
-  .ibadge {{ font-size: 0.72rem; font-weight: 600; border-radius: 6px; padding: 2px 8px;
-          text-transform: capitalize; white-space: nowrap; }}
-  .sdot {{ width: 8px; height: 8px; border-radius: 50%; flex: none; }}
-  .chev {{ color: #94a3b8; font-size: 0.7rem; transition: transform 0.15s; }}
-  .sess-row.open .chev {{ transform: rotate(180deg); }}
-  .sess-body {{ display: none; padding: 4px 14px 14px 36px; background: #fff;
-          border-top: 1px solid #f1f5f9; }}
-  .sess-body.open {{ display: block; }}
-  .sess-step {{ display: flex; gap: 10px; align-items: baseline; padding: 5px 0; }}
-  .sess-step .sk {{ min-width: 84px; font-size: 0.78rem; color: #64748b; }}
-  .sess-step .sv {{ font-size: 0.88rem; color: #334155; line-height: 1.5; }}
-  .seg-list {{ border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-top: 4px; }}
-  .seg-band {{ padding: 6px 12px; font-size: 0.74rem; font-weight: 600; color: #fff;
-          letter-spacing: 0.03em; }}
-  .seg-row {{ display: flex; align-items: center; gap: 10px; padding: 9px 12px;
-          border-top: 1px solid #f1f5f9; }}
-  .seg-list > .seg-row:first-child {{ border-top: none; }}
-  .seg-num {{ width: 16px; text-align: center; color: #94a3b8; font-size: 0.78rem; flex: none; }}
-  .seg-main {{ flex: 1; min-width: 0; }}
-  .seg-metric {{ font-size: 0.9rem; color: #0f172a; }}
-  .seg-metric b {{ font-weight: 600; }}
-  .seg-load {{ color: #334155; font-weight: 600; }}
-  .seg-target {{ font-size: 0.78rem; color: #64748b; margin-top: 1px; }}
-  .seg-tag {{ font-size: 0.66rem; font-weight: 600; letter-spacing: 0.04em; flex: none; }}
-  .sess-purpose {{ font-size: 0.8rem; color: #64748b; font-style: italic;
-          margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f5f9; }}
-  .sess-why {{ font-size: 0.84rem; color: #334155; margin-top: 8px; padding: 8px 10px;
-          background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 0; }}
-  .why-label {{ display: block; font-size: 0.68rem; font-weight: 600; color: #64748b;
-          text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }}
-  .methodology {{ font-size: 0.88rem; color: #334155; line-height: 1.6; margin: 0 4px 14px; }}
-  .src-list {{ display: flex; flex-direction: column; gap: 6px; }}
-  .src {{ display: flex; align-items: center; gap: 10px; padding: 8px 10px;
-          border: 1px solid #e2e8f0; border-radius: 8px; }}
-  .src-main {{ flex: 1; min-width: 0; }}
-  .src-claim {{ font-size: 0.86rem; color: #334155; }}
-  .src-cite {{ font-size: 0.76rem; color: #2563eb; text-decoration: none; }}
-  .src-cite:hover {{ text-decoration: underline; }}
-  .tier {{ font-size: 0.68rem; font-weight: 600; border-radius: 6px; padding: 2px 8px;
-          text-transform: capitalize; white-space: nowrap; }}
-  .src-note {{ font-size: 0.76rem; color: #94a3b8; margin: 12px 4px 2px; line-height: 1.5; }}
-  .focus {{ font-size: 0.7rem; background: #eef2ff; color: #4338ca; border-radius: 6px;
-          padding: 1px 6px; margin-left: 6px; }}
-  .badge {{ color: #fff; font-size: 0.72rem; font-weight: 600; border-radius: 6px;
-          padding: 2px 8px; text-transform: capitalize; }}
-  .rationale {{ font-size: 0.86rem; color: #334155; margin: 14px 4px 4px; }}
-  .zone-note {{ font-size: 0.78rem; color: #94a3b8; margin: 10px 4px 2px; }}
-  footer {{ color: #94a3b8; font-size: 0.8rem; margin-top: 28px; }}
-  /* tabs */
-  .tabs {{ display: flex; gap: 4px; border-bottom: 1px solid #e2e8f0; margin-bottom: 20px; }}
-  .tab-btn {{ background: none; border: none; padding: 10px 16px; font-size: 0.95rem;
-          color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; }}
-  .tab-btn:hover {{ color: #0f172a; }}
-  .tab-btn.active {{ color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }}
-  .tab-panel {{ display: none; }}
-  .tab-panel.active {{ display: block; }}
-  /* volume granularity toggle */
-  .gran-toggle {{ display: flex; gap: 6px; margin: 0 4px 12px; }}
-  .gran-btn {{ background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
-          padding: 6px 14px; font: inherit; font-size: 0.85rem; color: #64748b;
-          cursor: pointer; }}
-  .gran-btn:hover {{ border-color: #cbd5e1; color: #0f172a; }}
-  .gran-btn:focus-visible {{ outline: 2px solid #2563eb; outline-offset: 2px; }}
-  .gran-btn.active {{ background: #2563eb; border-color: #2563eb; color: #fff;
-          font-weight: 600; }}
-  /* zone comparison table */
-  table.zones {{ width: 100%; border-collapse: collapse; font-size: 0.92rem; }}
-  table.zones th, table.zones td {{ text-align: center; padding: 8px 10px;
-          border-bottom: 1px solid #e2e8f0; }}
-  table.zones th:first-child, table.zones td:first-child {{ text-align: left; }}
-  table.zones th {{ color: #64748b; font-weight: 600; }}
-  table.zones .muted {{ color: #94a3b8; font-size: 0.85rem; }}
-  .callout {{ background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
-          padding: 12px 16px; margin: 0 0 18px; font-size: 0.95rem; color: #1e3a8a; }}
-  .note {{ color: #475569; font-size: 0.88rem; line-height: 1.5; }}
-</style>
+<style>{stylesheet}</style>
 </head>
-<body>
+<body class="intro">
 <div class="wrap">
-  <h1>Training Dashboard</h1>
-  <div class="as-of">As of {as_of}</div>
+  <header class="masthead">
+    <h1>Training Dashboard</h1>
+    <div class="as-of">As of {as_of}</div>
+  </header>
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="plan">Training plan</button>
@@ -862,52 +838,6 @@ def render_html(
   <footer>Generated {generated} · Garmin training load + HRV · TSB bands follow
   TrainingPeaks conventions. CTL warm-up window shaded; treat early TSB with caution.</footer>
 </div>
-<script>
-  document.querySelectorAll('.tab-btn').forEach(function (btn) {{
-    btn.addEventListener('click', function () {{
-      document.querySelectorAll('.tab-btn').forEach(function (b) {{ b.classList.remove('active'); }});
-      document.querySelectorAll('.tab-panel').forEach(function (p) {{ p.classList.remove('active'); }});
-      btn.classList.add('active');
-      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-      window.dispatchEvent(new Event('resize'));  // let Plotly size the hidden chart
-    }});
-  }});
-  document.querySelectorAll('.gran-btn').forEach(function (btn) {{
-    btn.addEventListener('click', function () {{
-      var chart = document.getElementById('volume-chart');
-      if (!chart) {{ return; }}
-      var order = ['week', 'month', 'year'];
-      var visible = [];
-      order.forEach(function (g) {{
-        var on = g === btn.dataset.gran;
-        visible.push(on, on);  // one bar trace and one line trace per granularity
-      }});
-      Plotly.restyle(chart, {{visible: visible}});
-      Plotly.relayout(chart, {{'yaxis.autorange': true, 'yaxis2.autorange': true}});
-      document.querySelectorAll('.gran-btn').forEach(function (b) {{
-        b.classList.toggle('active', b === btn);
-      }});
-    }});
-  }});
-  document.querySelectorAll('.sess-row').forEach(function (row) {{
-    row.addEventListener('click', function () {{
-      row.classList.toggle('open');
-      document.getElementById(row.dataset.sess).classList.toggle('open');
-    }});
-  }});
-  document.querySelectorAll('.phase-cell').forEach(function (cell) {{
-    cell.addEventListener('click', function () {{
-      var wk = cell.dataset.week;
-      document.querySelectorAll('.phase-cell').forEach(function (c) {{
-        var on = c.dataset.week === wk;
-        c.classList.toggle('selected', on);
-        c.setAttribute('aria-pressed', on ? 'true' : 'false');
-      }});
-      document.querySelectorAll('[data-week-panel]').forEach(function (p) {{
-        p.classList.toggle('active', p.dataset.weekPanel === wk);
-      }});
-    }});
-  }});
-</script>
+<script>{page_script}</script>
 </body>
 </html>"""
