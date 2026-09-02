@@ -1,22 +1,27 @@
 """Ingestion orchestrator.
 
-Determines the sync window, then runs Garmin and Strava
-ingestion in sequence. Safe to re-run -- all upserts are
-idempotent.
+Determines the sync window, then runs Garmin ingestion. Safe to
+re-run -- all upserts are idempotent.
+
+Garmin is the sole source of activity data. Strava ingestion was
+removed on 2026-09-01 after API access was lost; the historical
+``strava_activities`` and ``strava_activity_streams`` tables remain
+in Supabase as a frozen archive (last row 2026-06-27) and are not
+read by this pipeline.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 
 from pathlib import Path
 
 from dotenv import load_dotenv
 from supabase import create_client
 
-from ingest import garmin, garmin_activities, strava
+from ingest import garmin, garmin_activities
 
 # Resolve .env relative to this file's project root so it works
 # whether called as `python -m ingest.run` or via GitHub Actions.
@@ -48,9 +53,9 @@ def get_supabase_client():
 def get_last_synced_date(supabase) -> date:
     """Find the most recent date already in Supabase.
 
-    Checks both garmin_daily_wellness and strava_activities
-    and returns the earlier of the two latest dates so we
-    never miss data from either source.
+    Reads the latest ``garmin_daily_wellness`` date and syncs from there.
+    Falls back to a ``DEFAULT_LOOKBACK_DAYS`` window if the table is empty
+    or unreachable.
 
     Parameters
     ----------
@@ -72,29 +77,12 @@ def get_last_synced_date(supabase) -> date:
             .limit(1)
             .execute()
         )
-        garmin_latest = (
+        since = (
             date.fromisoformat(result.data[0]["date"]) if result.data else default_since
         )
     except Exception:  # noqa: BLE001
-        garmin_latest = default_since
+        since = default_since
 
-    try:
-        result = (
-            supabase.table("strava_activities")
-            .select("start_date")
-            .order("start_date", desc=True)
-            .limit(1)
-            .execute()
-        )
-        strava_latest = (
-            datetime.fromisoformat(result.data[0]["start_date"]).date()
-            if result.data
-            else default_since
-        )
-    except Exception:  # noqa: BLE001
-        strava_latest = default_since
-
-    since = min(garmin_latest, strava_latest)
     logger.info("Syncing from %s", since)
     return since
 
@@ -105,13 +93,6 @@ def main() -> None:
 
     supabase = get_supabase_client()
     since = get_last_synced_date(supabase)
-    since_dt = datetime(since.year, since.month, since.day, tzinfo=timezone.utc)
-
-    logger.info("Running Strava ingestion from %s", since_dt.date())
-    try:
-        strava.ingest(supabase, since=since_dt)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Strava ingestion failed: %s", exc, exc_info=True)
 
     logger.info("Running Garmin ingestion from %s", since)
     try:

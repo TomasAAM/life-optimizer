@@ -1,7 +1,13 @@
 -- Initial schema for the training intelligence dashboard.
 -- Stores raw Strava activities/streams and raw Garmin wellness time series.
+--
+-- NOTE: the two strava_* tables below are a FROZEN ARCHIVE. Strava API access
+-- was lost and the last row landed 2026-06-27; ingestion was removed 2026-09-01.
+-- The tables are intentionally retained (real training history, and the streams
+-- have no Garmin equivalent) but nothing reads or writes them. Do not drop them.
+-- See migrations/0002_garmin_activities.sql for the live activity table.
 
--- Strava activity summaries (one row per activity)
+-- Strava activity summaries (one row per activity) -- FROZEN, see note above
 CREATE TABLE IF NOT EXISTS strava_activities (
     activity_id      bigint PRIMARY KEY,
     start_date       timestamptz NOT NULL,
@@ -21,7 +27,7 @@ CREATE TABLE IF NOT EXISTS strava_activities (
     fetched_at       timestamptz DEFAULT now()
 );
 
--- Strava per-second streams (one row per second per activity)
+-- Strava per-second streams (one row per second per activity) -- FROZEN, see note above
 CREATE TABLE IF NOT EXISTS strava_activity_streams (
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     activity_id bigint REFERENCES strava_activities(activity_id) ON DELETE CASCADE,

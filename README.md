@@ -1,13 +1,14 @@
 # Life Optimizer
 
-Personal training intelligence dashboard powered by Garmin Connect and Strava.
+Personal training intelligence dashboard powered by Garmin Connect.
 
 ## Architecture
 
-- **Garmin Connect** -- daily wellness data: HRV, sleep, stress, body battery, heart rate, respiration
-- **Strava** -- training log: activities, pace, power, HR streams
+- **Garmin Connect** -- sole data source: daily wellness (HRV, sleep, stress, body battery,
+  heart rate, respiration) and the training log (activities, duration, distance, HR,
+  native training load)
 - **Supabase** -- raw data storage + the training plan (zones, plan weeks, sessions)
-- **GitHub Actions** -- weekly ingestion every Sunday at 9am UTC
+- **GitHub Actions** -- ingestion every day at 9am UTC
 - **Training plan** -- lactate-anchored, generated on demand in multi-week blocks (see below)
 
 ## Training plan (on-demand blocks)
@@ -77,12 +78,9 @@ python ingest/run.py
 
 ## GitHub Actions
 
-The workflow runs every Sunday at 9am UTC. You can also trigger it manually from the Actions tab.
+The workflow runs every day at 9am UTC. You can also trigger it manually from the Actions tab.
 
 Required secrets:
-- `STRAVA_CLIENT_ID`
-- `STRAVA_CLIENT_SECRET`
-- `STRAVA_REFRESH_TOKEN`
 - `GARMIN_EMAIL`
 - `GARMIN_PASSWORD`
 - `SUPABASE_URL`
@@ -92,10 +90,25 @@ Required secrets:
 
 | Table | Rows | Description |
 |---|---|---|
-| `strava_activities` | 1 per session | Summary + performance |
-| `strava_activity_streams` | 1 per second per session | Raw time-series |
+| `garmin_activities` | 1 per session | Summary + native training load |
 | `garmin_daily_wellness` | 1 per day | Daily biometric summary |
 | `garmin_hrv_readings` | ~73 per night | 5-min HRV during sleep |
 | `garmin_heart_rate_readings` | ~300 per day | 2-min HR all day |
 | `garmin_stress_readings` | ~200 per day | 3-min stress all day |
 | `garmin_training_readiness` | 2-4 per day | Readiness snapshots |
+
+### Retired: Strava (frozen archive)
+
+Strava was the original activity source. API access was lost and the tables stopped
+receiving rows on **2026-06-27**; ingestion was removed on 2026-09-01. The historical
+data is **kept in Supabase, read-only, and is not read by any code**:
+
+| Table | Rows | Notes |
+|---|---|---|
+| `strava_activities` | 172 (2026-03-08 → 2026-06-27) | Superseded by `garmin_activities`, which covers the same window from 2026-03-09 |
+| `strava_activity_streams` | ~344k | Per-second HR/pace/power streams. No Garmin equivalent exists -- irreplaceable |
+
+The rows were deliberately **not** migrated into `garmin_activities`: Garmin already
+recorded the same sessions, so a migration would have duplicated them and corrupted the
+training-load signal the dashboard depends on. Query these tables directly if you ever
+need the pre-July history.

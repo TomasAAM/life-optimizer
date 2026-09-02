@@ -1,6 +1,6 @@
 """Heart-rate training zones: lab-measured vs platform-estimated.
 
-Compares three sources of HR zones for the same athlete:
+Compares two sources of HR zones for the same athlete:
 
 * **Lab** — derived from the 2026-06-19 treadmill lactate step test, anchored on
   the measured anaerobic threshold (LT2 ≈ 163 bpm). The only individualised,
@@ -8,15 +8,13 @@ Compares three sources of HR zones for the same athlete:
 * **Garmin** — Garmin Connect's zones (``HR_MAX`` method, maxHR = 200), fetched
   from ``/biometric-service/heartRateZones``. Note Garmin stores a lactate
   threshold HR of 175 but does not use it for these zones.
-* **Strava** — Strava's zones (``MaxHeartRateFromAge``), from the athlete-zones
-  endpoint.
 
-Both platforms anchor on (an assumed) maximum heart rate rather than threshold,
-so their hard zones sit well above the lab's. The comparison makes that gap
-visible: the same HR maps to very different zones depending on the source.
+Garmin anchors on an assumed maximum heart rate rather than threshold, so its
+hard zones sit well above the lab's. The comparison makes that gap visible: the
+same HR maps to very different zones depending on the source.
 
-These are reference values that change only when a new test is done or the
-platforms recompute; they are stored here as data. Sourced 2026-06-20.
+These are reference values that change only when a new test is done or Garmin
+recomputes; they are stored here as data. Sourced 2026-06-20.
 """
 
 from __future__ import annotations
@@ -57,7 +55,7 @@ class ZoneSystem:
     zones: list[Zone]
 
 
-# ── The three systems (ordered easiest-zone-first within each) ──
+# ── The two systems (ordered easiest-zone-first within each) ──
 
 LAB = ZoneSystem(
     name="Lab (lactate test)",
@@ -85,20 +83,7 @@ GARMIN = ZoneSystem(
     ],
 )
 
-STRAVA = ZoneSystem(
-    name="Strava",
-    source="Strava (max HR from age)",
-    anchor="max HR ≈ 190 (from age)",
-    zones=[
-        Zone("Z1", None, 126),
-        Zone("Z2", 126, 157),
-        Zone("Z3", 157, 173),
-        Zone("Z4", 173, 188),
-        Zone("Z5", 188, None),
-    ],
-)
-
-SYSTEMS = [LAB, GARMIN, STRAVA]
+SYSTEMS = [LAB, GARMIN]
 
 
 def zone_at_hr(system: ZoneSystem, hr: int) -> str:
@@ -208,14 +193,15 @@ def example_hr_callout(hr: int = 165) -> str:
 # ── Pace zones ────────────────────────────────────────────────────────────────
 # Pace is stored as seconds per km (smaller = faster = harder). Garmin does not
 # expose running pace zones (404 from the biometric service) and this athlete's
-# Garmin threshold pace is unset, so pace is a Lab-vs-Strava comparison.
+# Garmin threshold pace is unset, so the lab zones are the only pace zones we
+# have -- this section presents them rather than comparing sources.
 
 # Pace band-chart axis, seconds per km (slow on the left, fast on the right).
 _PACE_AXIS_SLOW = 360  # 6:00/km
 _PACE_AXIS_FAST = 210  # 3:30/km
 
-# Six-step ramp (Strava has a 6th zone); Lab uses the first five.
-_PACE_COLORS = ["#16a34a", "#84cc16", "#eab308", "#f97316", "#dc2626", "#991b1b"]
+# Five-step ramp, one colour per lab pace zone.
+_PACE_COLORS = ["#16a34a", "#84cc16", "#eab308", "#f97316", "#dc2626"]
 
 # The lab threshold pace (LT2), drawn as a reference line.
 LAB_LT2_PACE_S = 274  # 4:34/km
@@ -266,20 +252,7 @@ LAB_PACE = PaceSystem(
     ],
 )
 
-STRAVA_PACE = PaceSystem(
-    name="Strava",
-    source="from estimated 5 km (19:29)",
-    zones=[
-        PaceZone("Z1", None, pace_seconds("5:28")),
-        PaceZone("Z2", pace_seconds("5:28"), pace_seconds("4:42")),
-        PaceZone("Z3", pace_seconds("4:42"), pace_seconds("4:13")),
-        PaceZone("Z4", pace_seconds("4:13"), pace_seconds("3:57")),
-        PaceZone("Z5", pace_seconds("3:57"), pace_seconds("3:43")),
-        PaceZone("Z6", pace_seconds("3:43"), None),
-    ],
-)
-
-PACE_SYSTEMS = [LAB_PACE, STRAVA_PACE]
+PACE_SYSTEMS = [LAB_PACE]
 
 
 def pace_zone_at(system: PaceSystem, pace: str) -> str:
@@ -294,7 +267,12 @@ def pace_zone_at(system: PaceSystem, pace: str) -> str:
 
 
 def build_pace_comparison_figure(systems: list[PaceSystem] = PACE_SYSTEMS) -> go.Figure:
-    """Build a horizontal pace band chart (slow left, fast right)."""
+    """Build a horizontal pace band chart (slow left, fast right).
+
+    Only the lab system remains, so this renders a single row rather than a
+    comparison; the signature still takes a list so a second source can be
+    added back if one ever publishes pace zones for this athlete.
+    """
     fig = go.Figure()
     order = list(reversed(systems))  # first system (Lab) ends on top
 
@@ -353,7 +331,7 @@ def build_pace_comparison_figure(systems: list[PaceSystem] = PACE_SYSTEMS) -> go
 
 
 def pace_table_html(systems: list[PaceSystem] = PACE_SYSTEMS) -> str:
-    """Render a comparison table of pace-zone boundaries."""
+    """Render a table of pace-zone boundaries, plus a row noting Garmin has none."""
     max_zones = max(len(s.zones) for s in systems)
     head_cells = "".join(f"<th>Z{i + 1}</th>" for i in range(max_zones))
     header = f"<tr><th>Source</th><th>Anchor</th>{head_cells}</tr>"
@@ -383,7 +361,7 @@ def pace_table_html(systems: list[PaceSystem] = PACE_SYSTEMS) -> str:
 
 
 def example_pace_callout(pace: str = "4:30") -> str:
-    """Render a one-line callout showing how one pace maps across systems."""
+    """Render a one-line callout showing which lab zone one pace falls into."""
     parts = " · ".join(
         f"{s.name.split()[0]}: <strong>{pace_zone_at(s, pace)}</strong>" for s in PACE_SYSTEMS
     )

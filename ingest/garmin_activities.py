@@ -1,10 +1,11 @@
 """Garmin activities ingestion module.
 
 Fetches training activities directly from Garmin Connect and upserts them into
-Supabase. Garmin is the source of truth for activities because it keeps
-multisport sessions (e.g. HYROX) as a single unified record with a native
-``activityTrainingLoad``, whereas Strava fragments the same session into many
-zero-duration child activities.
+Supabase. Garmin is the sole source of activity data. It was already preferred
+over the since-retired Strava feed because it keeps multisport sessions
+(e.g. HYROX) as a single unified record with a native ``activityTrainingLoad``,
+where Strava fragmented the same session into many zero-duration child
+activities.
 """
 
 from __future__ import annotations
