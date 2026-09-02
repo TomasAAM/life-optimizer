@@ -836,27 +836,25 @@ def render_html(
   </div>
 
   <div class="tab-panel" id="tab-zones">
-    <h2>Heart-rate zones: lab vs platforms</h2>
+    <h2>Heart-rate zones: lab vs Garmin</h2>
     <div class="callout">{zones.example_hr_callout(165)}</div>
     <div class="panel">{zones_chart_html}</div>
     <div class="panel">{zones.zone_table_html()}</div>
     <p class="note">Your <strong>Lab</strong> zones are anchored on the measured
     anaerobic threshold (LT2 ≈ {zones.LAB_LT2_HR} bpm) from the 2026-06-19 lactate
-    test. <strong>Garmin</strong> and <strong>Strava</strong> anchor on an assumed
-    maximum heart rate (~200 and ~190), not threshold — so their hard zones sit
-    well above your real ones. Garmin even stores a threshold HR of 175 but uses
-    %max-HR for the zones. Net effect: a heart rate the lab calls threshold/VO2max
-    still reads as Z3-Z4 on the platforms.</p>
+    test. <strong>Garmin</strong> anchors on an assumed maximum heart rate (~200),
+    not threshold — so its hard zones sit well above your real ones. Garmin even
+    stores a threshold HR of 175 but uses %max-HR for the zones. Net effect: a
+    heart rate the lab calls threshold/VO2max still reads as Z3-Z4 on Garmin.</p>
 
-    <h2 style="margin-top:28px">Pace zones: lab vs Strava</h2>
+    <h2 style="margin-top:28px">Pace zones</h2>
     <div class="callout">{zones.example_pace_callout("4:30")}</div>
     <div class="panel">{pace_chart_html}</div>
     <div class="panel">{zones.pace_table_html()}</div>
     <p class="note">Lab pace zones come from the same test (threshold pace
-    ≈ {zones.format_pace(zones.LAB_LT2_PACE_S)}/km). <strong>Strava</strong> derives
-    its pace zones from an <em>estimated</em> 5 km time (19:29), which runs
-    optimistic, so its zones sit faster than the measured ones.
-    <strong>Garmin</strong> does not publish running pace zones for this athlete.</p>
+    ≈ {zones.format_pace(zones.LAB_LT2_PACE_S)}/km). There is nothing to compare
+    them against: <strong>Garmin</strong> does not publish running pace zones for
+    this athlete.</p>
   </div>
 
   <footer>Generated {generated} · Garmin training load + HRV · TSB bands follow
