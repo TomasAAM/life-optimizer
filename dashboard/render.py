@@ -13,6 +13,7 @@ from html import escape
 
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.offline import get_plotlyjs_version
 from plotly.subplots import make_subplots
 
 from dashboard import zones
@@ -633,6 +634,7 @@ def render_html(
     zones_fig: go.Figure,
     pace_fig: go.Figure,
     plan: PlanView | None = None,
+    metrics_html: str = "",
 ) -> str:
     """Assemble the full HTML document.
 
@@ -652,19 +654,25 @@ def render_html(
     pace_fig : plotly.graph_objects.Figure
         The pace-zone comparison band chart from
         :func:`dashboard.zones.build_pace_comparison_figure`.
+    metrics_html : str, optional
+        Pre-rendered metrics-tab fragment from
+        :func:`dashboard.metrics_tab.metrics_section_html`; when empty the tab
+        shows a placeholder.
 
     Returns
     -------
     str
         A complete, self-contained HTML document.
     """
-    chart_html = fig.to_html(full_html=False, include_plotlyjs="cdn")
-    # plotly.js is already loaded by the chart above; don't ship it twice.
+    chart_html = fig.to_html(full_html=False, include_plotlyjs=False)
     zones_chart_html = zones_fig.to_html(full_html=False, include_plotlyjs=False)
     pace_chart_html = pace_fig.to_html(full_html=False, include_plotlyjs=False)
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     as_of = snapshot.date.strftime("%A, %d %B %Y")
     plan_html = _plan_section(plan) if plan is not None else ""
+    metrics_section = metrics_html or (
+        "<h2>Metrics</h2><div class='panel'><p>No metrics available yet.</p></div>"
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -672,6 +680,7 @@ def render_html(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Training Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-{get_plotlyjs_version()}.min.js" charset="utf-8"></script>
 <style>
   :root {{ color-scheme: light; }}
   body {{ font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
@@ -778,6 +787,15 @@ def render_html(
   .tab-btn.active {{ color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }}
   .tab-panel {{ display: none; }}
   .tab-panel.active {{ display: block; }}
+  /* volume granularity toggle */
+  .gran-toggle {{ display: flex; gap: 6px; margin: 0 4px 12px; }}
+  .gran-btn {{ background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+          padding: 6px 14px; font: inherit; font-size: 0.85rem; color: #64748b;
+          cursor: pointer; }}
+  .gran-btn:hover {{ border-color: #cbd5e1; color: #0f172a; }}
+  .gran-btn:focus-visible {{ outline: 2px solid #2563eb; outline-offset: 2px; }}
+  .gran-btn.active {{ background: #2563eb; border-color: #2563eb; color: #fff;
+          font-weight: 600; }}
   /* zone comparison table */
   table.zones {{ width: 100%; border-collapse: collapse; font-size: 0.92rem; }}
   table.zones th, table.zones td {{ text-align: center; padding: 8px 10px;
@@ -797,12 +815,17 @@ def render_html(
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="plan">Training plan</button>
+    <button class="tab-btn" data-tab="metrics">Metrics</button>
     <button class="tab-btn" data-tab="training">Training load</button>
     <button class="tab-btn" data-tab="zones">Zones</button>
   </div>
 
   <div class="tab-panel active" id="tab-plan">
     {plan_html}
+  </div>
+
+  <div class="tab-panel" id="tab-metrics">
+    {metrics_section}
   </div>
 
   <div class="tab-panel" id="tab-training">
@@ -847,6 +870,23 @@ def render_html(
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
       window.dispatchEvent(new Event('resize'));  // let Plotly size the hidden chart
+    }});
+  }});
+  document.querySelectorAll('.gran-btn').forEach(function (btn) {{
+    btn.addEventListener('click', function () {{
+      var chart = document.getElementById('volume-chart');
+      if (!chart) {{ return; }}
+      var order = ['week', 'month', 'year'];
+      var visible = [];
+      order.forEach(function (g) {{
+        var on = g === btn.dataset.gran;
+        visible.push(on, on);  // one bar trace and one line trace per granularity
+      }});
+      Plotly.restyle(chart, {{visible: visible}});
+      Plotly.relayout(chart, {{'yaxis.autorange': true, 'yaxis2.autorange': true}});
+      document.querySelectorAll('.gran-btn').forEach(function (b) {{
+        b.classList.toggle('active', b === btn);
+      }});
     }});
   }});
   document.querySelectorAll('.sess-row').forEach(function (row) {{

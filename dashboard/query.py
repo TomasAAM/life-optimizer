@@ -75,18 +75,20 @@ def _fetch_all(supabase: Client, table: str, columns: str, order_col: str) -> pd
 
 
 def fetch_activities(supabase: Client) -> pd.DataFrame:
-    """Fetch Garmin activities with their native training load.
+    """Fetch Garmin activities with their native training load and volume.
 
     Returns
     -------
     pandas.DataFrame
         Columns: start_time_local, activity_name, activity_type,
-        training_load, is_multisport.
+        training_load, is_multisport, distance_m, duration_s,
+        moving_duration_s, elevation_gain_m, avg_hr, max_hr.
     """
     return _fetch_all(
         supabase,
         "garmin_activities",
-        "start_time_local,activity_name,activity_type,training_load,is_multisport",
+        "start_time_local,activity_name,activity_type,training_load,is_multisport,"
+        "distance_m,duration_s,moving_duration_s,elevation_gain_m,avg_hr,max_hr",
         "start_time",
     )
 

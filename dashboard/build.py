@@ -12,7 +12,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from dashboard import metrics, query, render, zones
+from dashboard import activity_metrics, metrics, metrics_tab, query, render, zones
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 load_dotenv(_PROJECT_ROOT / ".env", override=True)
@@ -95,10 +95,24 @@ def main() -> None:
 
     plan_view = _build_plan_view(supabase, activities)
 
+    today = date.today()
+    runs = activity_metrics.prepare_runs(activities)
+    metrics_html = metrics_tab.metrics_section_html(
+        runs, activities, query.fetch_training_zones(supabase), today
+    )
+    logger.info(
+        "Metrics: %d runs (%d excluded for implausible pace)",
+        len(runs),
+        int(runs["implausible"].sum()) if not runs.empty else 0,
+    )
+
     fig = render.build_figure(load_series, hrv_series)
     zones_fig = zones.build_zone_comparison_figure()
     pace_fig = zones.build_pace_comparison_figure()
-    html = render.render_html(fig, snapshot, weekly, zones_fig, pace_fig, plan=plan_view)
+    html = render.render_html(
+        fig, snapshot, weekly, zones_fig, pace_fig,
+        plan=plan_view, metrics_html=metrics_html,
+    )
 
     _OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     _OUTPUT_PATH.write_text(html, encoding="utf-8")
