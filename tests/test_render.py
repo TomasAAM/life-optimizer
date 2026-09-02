@@ -1,9 +1,10 @@
-"""Tests for the training-plan rendering, in particular week switching.
+"""Tests for the dashboard rendering: tab layout and training-plan week switching.
 
 The dashboard is a static HTML file, so every week of the block is rendered at
 build time and toggled in the browser. These tests pin the invariants that makes
 that safe: one strip button and one panel per week, exactly one week active, and
-element ids that stay unique across weeks.
+element ids that stay unique across weeks. They also pin which tab opens first,
+since every other tab is hidden at load and depends on that being unambiguous.
 """
 
 from __future__ import annotations
@@ -11,8 +12,10 @@ from __future__ import annotations
 import re
 
 import pandas as pd
+import plotly.graph_objects as go
 
-from dashboard.render import PlanView, PlanWeekView, _plan_section
+from dashboard.metrics import ReadinessSnapshot
+from dashboard.render import PlanView, PlanWeekView, _plan_section, render_html
 
 
 def _header(week_start: str, phase: str = "base", weeks_to_race: int = 14) -> dict:
@@ -101,3 +104,40 @@ def test_block_card_numbers_each_week_in_order() -> None:
     html = _plan_section(_view())
     for i in (1, 2, 3):
         assert f"Week {i} of 3" in html
+
+
+def _snapshot() -> ReadinessSnapshot:
+    """A minimal readiness snapshot for the header cards."""
+    return ReadinessSnapshot(
+        date=pd.Timestamp("2026-09-01"),
+        ctl=100.0,
+        atl=90.0,
+        tsb=10.0,
+        tsb_label="Fresh / tapered",
+        hrv_night=50.0,
+        hrv_status="BALANCED",
+    )
+
+
+def _document() -> str:
+    """Render a full document with empty figures and no plan."""
+    return render_html(
+        go.Figure(),
+        _snapshot(),
+        pd.DataFrame(columns=["week_start", "total_load"]),
+        go.Figure(),
+        go.Figure(),
+        plan=PlanView(),
+    )
+
+
+def test_training_plan_is_the_tab_that_opens_first() -> None:
+    html = _document()
+    assert '<button class="tab-btn active" data-tab="plan">' in html
+    assert '<div class="tab-panel active" id="tab-plan">' in html
+
+
+def test_exactly_one_tab_button_and_one_tab_panel_are_active() -> None:
+    html = _document()
+    assert html.count('class="tab-btn active"') == 1
+    assert html.count('class="tab-panel active"') == 1

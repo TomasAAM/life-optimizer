@@ -796,20 +796,20 @@ def render_html(
   <div class="as-of">As of {as_of}</div>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="training">Training load</button>
-    <button class="tab-btn" data-tab="plan">Training plan</button>
+    <button class="tab-btn active" data-tab="plan">Training plan</button>
+    <button class="tab-btn" data-tab="training">Training load</button>
     <button class="tab-btn" data-tab="zones">Zones</button>
   </div>
 
-  <div class="tab-panel active" id="tab-training">
+  <div class="tab-panel active" id="tab-plan">
+    {plan_html}
+  </div>
+
+  <div class="tab-panel" id="tab-training">
     {_snapshot_cards(snapshot)}
     <div class="panel">{chart_html}</div>
     <h2>Weekly summary</h2>
     <div class="panel">{_weekly_table(weekly)}</div>
-  </div>
-
-  <div class="tab-panel" id="tab-plan">
-    {plan_html}
   </div>
 
   <div class="tab-panel" id="tab-zones">
