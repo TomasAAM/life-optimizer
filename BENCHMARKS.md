@@ -16,6 +16,13 @@ Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limi
   the read. Never test two maximal domains on the same day.
 - **Log the context:** RPE, sleep/readiness, temperature, shoes, anything that moves the number.
 - **Rotate, don't re-test everything every time** — see the cadence table.
+- **A treadmill test needs a trusted speed source.** A watch that isn't paired to the treadmill
+  estimates distance from the wrist, which voids the pace half of the benchmark — HR still stands.
+  Either pair the watch, calibrate the run against the console distance afterwards, or write down
+  console speed by hand. Otherwise run any pace-anchored test outdoors. (Cost this one 2026-08-11.)
+- **One effort, not steps.** A 30-min TT is a single maximal, near-even effort. Stepping the pace up
+  through the test invalidates the last-20-min LTHR average, because that window then spans several
+  intensities instead of one. Even splits, small negative finish at most.
 
 ## Cadence
 
@@ -98,7 +105,12 @@ Append-only. One row per measurement.
 
 | Date | Domain | Benchmark | Value | Unit | Context (RPE / conditions) | Notes |
 |---|---|---|---|---|---|---|
-| 2026-06-19 | Endurance | LT2 | 4:34 @ 163 | /km @ bpm | Lab lactate test | Wide method spread; LT1 not captured (started too fast) |
+| 2026-06-19 | Endurance | LT2 | 4:34 @ 163 | /km @ bpm | Lab lactate test | **SUPERSEDED 2026-09-06** — see the 08-30 re-anchor row. Wide method spread; LT1 not captured (started too fast) |
 | 2026-07-21 | Endurance | 5k PB | <20:00 | min:s | Self-reported, not a controlled test | Establish a clean baseline in a controlled 5k TT |
+| 2026-08-11 | Endurance | 30-min TT — LTHR | ~180 | bpm | Home treadmill, 06:09. **Not fresh**: 6 h hike Sun + gym & 8.9 km Mon. Garmin 23934675768 | **Protocol not met** — run as three progressive steps (5:33/km @ 171 · 5:02 @ 177 · 4:43 @ 182-183), not one even maximal effort. Treadmill auto-paused 75 s at 24:00; moving time still 29:39, so the stop cost ~20 s and is *not* why the test is compromised. HR half survives: 177 held steady 10 min with two step-ups above it, finishing at 191 (max 192). Naive Friel last-20 avg = 179.6. Corroborating: routine easy long runs sit at HR 150, impossible if LT2 HR were 163. |
+| 2026-08-11 | Endurance | 30-min TT — threshold pace | VOID | /km | As above | Watch was **not paired to the treadmill** → wrist-estimated distance. Pace unusable at any confidence. Retest outdoors on a flat measured loop. |
+| 2026-08-30 | Endurance | 10 km | 39:35 | min:s | Outdoor, 07:30. 10.565 km in 41:49 = 3:57.6/km, avg HR 183, max 194, 84 m gain, cadence 174. 2.4 km warm-up + 5.3 km cool-down. Garmin 24171757728 | Not tagged as a race but run as one. The strongest performance anchor on file — supersedes the self-reported 5k. |
+| 2026-09-05 | Hyrox | Full station sim | 48:48 | min:s | Peñalolén, 32 laps, 5.98 km, max HR 194, TE 4.8 (VO2max), anaerobic TE 3.5, load 431. Garmin 24251406115 | Per-station splits not broken out. Log them next time — the sim is only a benchmark if the station times are recoverable. |
+| 2026-09-06 | Endurance | LT2 (re-anchor) | 4:16 @ 175 | /km @ bpm | Derived, not tested. From the 08-30 10 km + the surviving HR half of the 08-11 TT | Fitting the measured pace–HR curve (6:02→133, 5:05→154, 3:58→183) and extrapolating to 175 bpm gives 4:18 from either end; Riegel on the 10 km gives 4:03. Took 4:16. `training_zones` reseeded. **Confirm with the outdoor 30-min TT in the week of 09-14** — this is an inference until then. |
 
 _Add new rows as you test. Keep dates ISO (YYYY-MM-DD)._

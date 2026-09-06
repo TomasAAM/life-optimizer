@@ -1,20 +1,25 @@
-"""Heart-rate training zones: lab-measured vs platform-estimated.
+"""Heart-rate training zones: the working anchor vs platform-estimated.
 
 Compares two sources of HR zones for the same athlete:
 
-* **Lab** — derived from the 2026-06-19 treadmill lactate step test, anchored on
-  the measured anaerobic threshold (LT2 ≈ 163 bpm). The only individualised,
-  physiologically grounded set.
+* **Working** — anchored on LT2 ≈ 175 bpm / 4:16 per km, re-derived on
+  2026-09-06 from the 2026-08-30 10 km field effort (3:57.6/km at avg HR 183)
+  and the surviving heart-rate half of the 2026-08-11 time trial. This replaced
+  the 2026-06-19 lactate step test (LT2 ≈ 163 bpm), which the athlete's own
+  training log contradicted: easy runs sat at 130-140 bpm and long runs at
+  150-154, impossible if 163 were threshold.
 * **Garmin** — Garmin Connect's zones (``HR_MAX`` method, maxHR = 200), fetched
-  from ``/biometric-service/heartRateZones``. Note Garmin stores a lactate
-  threshold HR of 175 but does not use it for these zones.
+  from ``/biometric-service/heartRateZones``. Garmin's own auto-detected lactate
+  threshold HR was 175 — the same figure the field data gives — but it does not
+  use it for these zones, and the stored value was later overwritten with the
+  lab's 163.
 
 Garmin anchors on an assumed maximum heart rate rather than threshold, so its
-hard zones sit well above the lab's. The comparison makes that gap visible: the
-same HR maps to very different zones depending on the source.
+zone boundaries still disagree with the working set. The comparison makes that
+gap visible: the same HR maps to different zones depending on the source.
 
-These are reference values that change only when a new test is done or Garmin
-recomputes; they are stored here as data. Sourced 2026-06-20.
+These are reference values that change only when the anchor is re-tested or
+Garmin recomputes; they are stored here as data. Re-anchored 2026-09-06.
 """
 
 from __future__ import annotations
@@ -32,8 +37,8 @@ _AXIS_MAX = 200
 # Intensity colour ramp, easiest (Z1) to hardest (Z5).
 _ZONE_COLORS = ["#16a34a", "#84cc16", "#eab308", "#f97316", "#dc2626"]
 
-# The lab anchor (LT2 consensus) — also drawn as a reference line.
-LAB_LT2_HR = 163
+# The working anchor (LT2) — also drawn as a reference line.
+WORKING_LT2_HR = 175
 
 
 @dataclass(frozen=True)
@@ -57,16 +62,16 @@ class ZoneSystem:
 
 # ── The two systems (ordered easiest-zone-first within each) ──
 
-LAB = ZoneSystem(
-    name="Lab (lactate test)",
-    source="2026-06-19 lactate step test",
-    anchor="LT2 threshold ≈ 163 bpm",
+WORKING = ZoneSystem(
+    name="Working (field-anchored)",
+    source="2026-08-30 10 km + 2026-08-11 TT (HR half)",
+    anchor="LT2 threshold ≈ 175 bpm",
     zones=[
-        Zone("Z1 Recovery", None, 139),
-        Zone("Z2 Endurance", 139, 147),
-        Zone("Z3 Tempo", 147, 155),
-        Zone("Z4 Threshold", 155, 163),
-        Zone("Z5 VO2max", 163, None),
+        Zone("Z1 Recovery", None, 142),
+        Zone("Z2 Endurance", 142, 155),
+        Zone("Z3 Tempo", 155, 163),
+        Zone("Z4 Threshold", 163, 175),
+        Zone("Z5 VO2max", 175, None),
     ],
 )
 
@@ -83,7 +88,7 @@ GARMIN = ZoneSystem(
     ],
 )
 
-SYSTEMS = [LAB, GARMIN]
+SYSTEMS = [WORKING, GARMIN]
 
 
 def zone_at_hr(system: ZoneSystem, hr: int) -> str:
@@ -103,7 +108,7 @@ def build_zone_comparison_figure(systems: list[ZoneSystem] = SYSTEMS) -> go.Figu
     ----------
     systems : list[ZoneSystem], optional
         Systems to compare, drawn bottom-to-top in reverse list order so the
-        first (Lab) sits on top.
+        first (Working) sits on top.
 
     Returns
     -------
@@ -138,11 +143,11 @@ def build_zone_comparison_figure(systems: list[ZoneSystem] = SYSTEMS) -> go.Figu
                 )
             )
 
-    # Reference line at the lab-measured threshold.
+    # Reference line at the working threshold anchor.
     fig.add_vline(
-        x=LAB_LT2_HR,
+        x=WORKING_LT2_HR,
         line=dict(color=theme.COLOR_REFERENCE, width=2, dash="dash"),
-        annotation_text=f"Lab threshold {LAB_LT2_HR}",
+        annotation_text=f"Threshold {WORKING_LT2_HR}",
         annotation_position="top",
         annotation_font_size=11,
         annotation_font_color=theme.COLOR_REFERENCE,
@@ -193,18 +198,18 @@ def example_hr_callout(hr: int = 165) -> str:
 # ── Pace zones ────────────────────────────────────────────────────────────────
 # Pace is stored as seconds per km (smaller = faster = harder). Garmin does not
 # expose running pace zones (404 from the biometric service) and this athlete's
-# Garmin threshold pace is unset, so the lab zones are the only pace zones we
+# Garmin threshold pace is unset, so the working zones are the only pace zones we
 # have -- this section presents them rather than comparing sources.
 
 # Pace band-chart axis, seconds per km (slow on the left, fast on the right).
 _PACE_AXIS_SLOW = 360  # 6:00/km
 _PACE_AXIS_FAST = 210  # 3:30/km
 
-# Five-step ramp, one colour per lab pace zone.
+# Five-step ramp, one colour per pace zone.
 _PACE_COLORS = ["#16a34a", "#84cc16", "#eab308", "#f97316", "#dc2626"]
 
-# The lab threshold pace (LT2), drawn as a reference line.
-LAB_LT2_PACE_S = 274  # 4:34/km
+# The working threshold pace (LT2), drawn as a reference line.
+WORKING_LT2_PACE_S = 256  # 4:16/km
 
 
 def pace_seconds(pace: str) -> int:
@@ -240,19 +245,19 @@ class PaceSystem:
     zones: list[PaceZone]
 
 
-LAB_PACE = PaceSystem(
-    name="Lab (lactate test)",
-    source="LT2 pace ≈ 4:34/km",
+WORKING_PACE = PaceSystem(
+    name="Working (field-anchored)",
+    source="LT2 pace ≈ 4:16/km",
     zones=[
-        PaceZone("Z1 Recovery", None, pace_seconds("5:22")),
-        PaceZone("Z2 Endurance", pace_seconds("5:22"), pace_seconds("5:04")),
-        PaceZone("Z3 Tempo", pace_seconds("5:04"), pace_seconds("4:48")),
-        PaceZone("Z4 Threshold", pace_seconds("4:48"), pace_seconds("4:34")),
-        PaceZone("Z5 VO2max", pace_seconds("4:34"), None),
+        PaceZone("Z1 Recovery", None, pace_seconds("5:45")),
+        PaceZone("Z2 Endurance", pace_seconds("5:45"), pace_seconds("5:05")),
+        PaceZone("Z3 Tempo", pace_seconds("5:05"), pace_seconds("4:33")),
+        PaceZone("Z4 Threshold", pace_seconds("4:33"), pace_seconds("4:16")),
+        PaceZone("Z5 VO2max", pace_seconds("4:16"), None),
     ],
 )
 
-PACE_SYSTEMS = [LAB_PACE]
+PACE_SYSTEMS = [WORKING_PACE]
 
 
 def pace_zone_at(system: PaceSystem, pace: str) -> str:
@@ -269,7 +274,7 @@ def pace_zone_at(system: PaceSystem, pace: str) -> str:
 def build_pace_comparison_figure(systems: list[PaceSystem] = PACE_SYSTEMS) -> go.Figure:
     """Build a horizontal pace band chart (slow left, fast right).
 
-    Only the lab system remains, so this renders a single row rather than a
+    Only the working system remains, so this renders a single row rather than a
     comparison; the signature still takes a list so a second source can be
     added back if one ever publishes pace zones for this athlete.
     """
@@ -304,9 +309,9 @@ def build_pace_comparison_figure(systems: list[PaceSystem] = PACE_SYSTEMS) -> go
             )
 
     fig.add_vline(
-        x=LAB_LT2_PACE_S,
+        x=WORKING_LT2_PACE_S,
         line=dict(color=theme.COLOR_REFERENCE, width=2, dash="dash"),
-        annotation_text=f"Lab threshold {format_pace(LAB_LT2_PACE_S)}",
+        annotation_text=f"Threshold {format_pace(WORKING_LT2_PACE_S)}",
         annotation_position="top",
         annotation_font_size=11,
         annotation_font_color=theme.COLOR_REFERENCE,
@@ -361,7 +366,7 @@ def pace_table_html(systems: list[PaceSystem] = PACE_SYSTEMS) -> str:
 
 
 def example_pace_callout(pace: str = "4:30") -> str:
-    """Render a one-line callout showing which lab zone one pace falls into."""
+    """Render a one-line callout showing which working zone one pace falls into."""
     parts = " · ".join(
         f"{s.name.split()[0]}: <strong>{pace_zone_at(s, pace)}</strong>" for s in PACE_SYSTEMS
     )

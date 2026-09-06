@@ -812,25 +812,28 @@ def render_html(
   </div>
 
   <div class="tab-panel" id="tab-zones">
-    <h2>Heart-rate zones: lab vs Garmin</h2>
+    <h2>Heart-rate zones: working anchor vs Garmin</h2>
     <div class="callout">{zones.example_hr_callout(165)}</div>
     <div class="panel">{zones_chart_html}</div>
     <div class="panel">{zones.zone_table_html()}</div>
-    <p class="note">Your <strong>Lab</strong> zones are anchored on the measured
-    anaerobic threshold (LT2 ≈ {zones.LAB_LT2_HR} bpm) from the 2026-06-19 lactate
-    test. <strong>Garmin</strong> anchors on an assumed maximum heart rate (~200),
-    not threshold — so its hard zones sit well above your real ones. Garmin even
-    stores a threshold HR of 175 but uses %max-HR for the zones. Net effect: a
-    heart rate the lab calls threshold/VO2max still reads as Z3-Z4 on Garmin.</p>
+    <p class="note">Your <strong>Working</strong> zones are anchored on
+    LT2 ≈ {zones.WORKING_LT2_HR} bpm, re-derived on 2026-09-06 from the 2026-08-30
+    10 km (3:57.6/km at avg HR 183) plus the surviving HR half of the 2026-08-11
+    time trial. They replace the 2026-06-19 lactate test (LT2 ≈ 163 bpm), which your
+    own training log contradicted — easy runs at 130-140 bpm are impossible if 163
+    is threshold. <strong>Garmin</strong> anchors on an assumed maximum heart rate
+    (~200), not threshold, so its boundaries still disagree; Garmin's own
+    auto-detected threshold HR was 175, the same figure the field data gives.</p>
 
     <h2 style="margin-top:28px">Pace zones</h2>
     <div class="callout">{zones.example_pace_callout("4:30")}</div>
     <div class="panel">{pace_chart_html}</div>
     <div class="panel">{zones.pace_table_html()}</div>
-    <p class="note">Lab pace zones come from the same test (threshold pace
-    ≈ {zones.format_pace(zones.LAB_LT2_PACE_S)}/km). There is nothing to compare
+    <p class="note">Pace zones come from the same anchor (threshold pace
+    ≈ {zones.format_pace(zones.WORKING_LT2_PACE_S)}/km). There is nothing to compare
     them against: <strong>Garmin</strong> does not publish running pace zones for
-    this athlete.</p>
+    this athlete. The outdoor 30-min time trial in the week of 09-14 is what turns
+    this anchor from an inference into a measurement.</p>
   </div>
 
   <footer>Generated {generated} · Garmin training load + HRV · TSB bands follow

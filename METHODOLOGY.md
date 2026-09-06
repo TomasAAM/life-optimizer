@@ -21,8 +21,10 @@ little "grey zone." This is why we cap hard days and keep easy days genuinely ea
 - *Caveat:* the polarized-vs-pyramidal edge is modest; the robust finding is the large easy fraction.
 
 ### 2. Threshold work to raise LT2
-Sparing, high-quality threshold sessions anchored on the measured lactate threshold (LT2 ≈ 163 bpm /
-4:34/km) raise the aerobic ceiling that serves both the 21k and Hyrox running.
+Sparing, high-quality threshold sessions anchored on the athlete's current LT2 (≈ 175 bpm / 4:16/km,
+re-anchored 2026-09-06 — see BENCHMARKS.md) raise the aerobic ceiling that serves both the 21k and
+Hyrox running. The anchor matters more than the method: the retired 2026-06-19 lab pair (163 bpm /
+4:34/km) put every "threshold" session a full zone too easy, which is tempo work wearing the label.
 - **Moderate / practice-derived** — the Norwegian lactate-guided / double-threshold approach
   (Bakken → Ingebrigtsen) is validated by results, not by RCTs. https://www.mariusbakken.com/the-norwegian-model.html
   Its components (threshold work + high easy volume) are well supported above; the specific
