@@ -15,7 +15,13 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from dashboard.metrics import ReadinessSnapshot
-from dashboard.render import PlanView, PlanWeekView, _plan_section, render_html
+from dashboard.render import (
+    PlanView,
+    PlanWeekView,
+    _plan_section,
+    build_figure,
+    render_html,
+)
 
 
 def _header(week_start: str, phase: str = "base", weeks_to_race: int = 14) -> dict:
@@ -141,3 +147,47 @@ def test_exactly_one_tab_button_and_one_tab_panel_are_active() -> None:
     html = _document()
     assert html.count('class="tab-btn active"') == 1
     assert html.count('class="tab-panel active"') == 1
+
+
+def _load_series(days: int = 40) -> pd.DataFrame:
+    index = pd.date_range("2026-06-01", periods=days, freq="D")
+    return pd.DataFrame(
+        {"load": 60.0, "ctl": 80.0, "atl": 85.0, "tsb": -5.0}, index=index
+    )
+
+
+def _hrv_series(days: int = 40) -> pd.DataFrame:
+    index = pd.date_range("2026-06-01", periods=days, freq="D")
+    return pd.DataFrame(
+        {"hrv_night": 45.0, "baseline_high": 51.0, "baseline_low": 43.0},
+        index=index,
+    )
+
+
+def test_load_chart_rows_do_not_repeat_the_date() -> None:
+    """The chart is "x unified", so the date already heads the card.
+
+    A ``%{x|...}`` prefix in each body printed it again on every row, so one
+    tooltip read "Sun 28 Jun" five times under a "Jun 28, 2026" header.
+    """
+    fig = build_figure(_load_series(), _hrv_series())
+    for trace in fig.data:
+        assert "%{x" not in (trace.hovertemplate or "")
+
+
+def test_load_chart_header_spells_out_the_date() -> None:
+    """Without an explicit format the unified header reads "Jun 28, 2026"."""
+    fig = build_figure(_load_series(), _hrv_series())
+    assert fig.layout.hovermode == "x unified"
+    assert all(t.xhoverformat == "%a %d %b %Y" for t in fig.data)
+
+
+def test_load_chart_rows_still_name_their_series() -> None:
+    """Dropping the date must not leave a bare number on the row."""
+    fig = build_figure(_load_series(), _hrv_series())
+    labelled = [t.hovertemplate for t in fig.data if t.hovertemplate]
+    assert any("Load:" in t for t in labelled)
+    assert any("CTL:" in t for t in labelled)
+    assert any("ATL:" in t for t in labelled)
+    assert any("TSB:" in t for t in labelled)
+    assert any("HRV:" in t for t in labelled)

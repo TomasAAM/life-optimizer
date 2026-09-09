@@ -268,7 +268,7 @@ def build_figure(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> go.Figu
             name="Daily load",
             marker_color=_COLOR_LOAD,
             opacity=0.7,
-            hovertemplate="%{x|%a %d %b}<br>Load: %{y:.0f}<extra></extra>",
+            hovertemplate="Load: %{y:.0f}<extra></extra>",
         ),
         row=1,
         col=1,
@@ -280,7 +280,7 @@ def build_figure(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> go.Figu
             y=load_series["ctl"],
             name="CTL (fitness)",
             line=dict(color=_COLOR_CTL, width=2.5),
-            hovertemplate="%{x|%a %d %b}<br>CTL: %{y:.1f}<extra></extra>",
+            hovertemplate="CTL: %{y:.1f}<extra></extra>",
         ),
         row=1,
         col=1,
@@ -292,7 +292,7 @@ def build_figure(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> go.Figu
             y=load_series["atl"],
             name="ATL (fatigue)",
             line=dict(color=_COLOR_ATL, width=1.8),
-            hovertemplate="%{x|%a %d %b}<br>ATL: %{y:.1f}<extra></extra>",
+            hovertemplate="ATL: %{y:.1f}<extra></extra>",
         ),
         row=1,
         col=1,
@@ -311,7 +311,7 @@ def build_figure(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> go.Figu
             name="TSB (form)",
             line=dict(color=_COLOR_TSB, width=1.6, dash="dot"),
             connectgaps=False,
-            hovertemplate="%{x|%a %d %b}<br>TSB: %{y:.1f}<extra></extra>",
+            hovertemplate="TSB: %{y:.1f}<extra></extra>",
         ),
         row=1,
         col=1,
@@ -372,11 +372,13 @@ def build_figure(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> go.Figu
                 mode="lines+markers",
                 line=dict(color=_COLOR_HRV, width=2),
                 marker=dict(size=5),
-                hovertemplate="%{x|%a %d %b}<br>HRV: %{y:.0f} ms<extra></extra>",
+                hovertemplate="HRV: %{y:.0f} ms<extra></extra>",
             ),
             row=2,
             col=1,
         )
+
+    fig.update_traces(xhoverformat="%a %d %b %Y")
 
     fig.update_yaxes(title_text="Load / CTL / ATL", row=1, col=1, secondary_y=False)
     fig.update_yaxes(title_text="TSB", row=1, col=1, secondary_y=True)
