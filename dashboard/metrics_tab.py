@@ -47,6 +47,13 @@ _BAR_WIDTH_MS = {"week": 6 * _DAY_MS, "month": 26 * _DAY_MS, "year": 330 * _DAY_
 
 _VOLUME_DIV_ID = "volume-chart"
 
+# Unified hover puts the period in the card header, so each granularity needs a
+# header format matching its bucket: a week reads as a date, a year as a year.
+# Literal text passes through d3 time formatting untouched.
+_HOVER_DATE_FORMAT = {
+    "week": "week of %d %b %Y", "month": "%B %Y", "year": "%Y",
+}
+
 _WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 # Light grey for a rest day, deepening blue with distance.
@@ -57,11 +64,18 @@ _CALENDAR_SCALE = [
     [0.7, "#3D7BE0"], [1.0, "#1F4FB5"],
 ]
 
-def _layout(**overrides) -> dict:
+def _layout(hovermode: str = "closest", **overrides) -> dict:
     """Return the shared chart layout with this tab's margins and legend applied.
 
     Parameters
     ----------
+    hovermode : str, optional
+        Plotly hover mode. ``"closest"`` suits the per-run scatter and the
+        calendar, where an individual marker or cell is the thing being pointed
+        at. The time series pass ``"x unified"``, so one period answers as a
+        single card wherever in its column the pointer sits -- under
+        ``"closest"`` a chart with two series on two axes hands back whichever
+        *point* is nearest in pixels, which is not the series being pointed at.
     **overrides
         Per-figure layout keys, typically ``height`` and ``title``.
 
@@ -72,7 +86,7 @@ def _layout(**overrides) -> dict:
     """
     return theme.chart_layout(
         margin=dict(l=50, r=30, t=58, b=40),
-        hovermode="closest",
+        hovermode=hovermode,
         legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1),
         **overrides,
     )
@@ -104,7 +118,7 @@ def build_volume_figure(runs: pd.DataFrame, today: date) -> go.Figure:
         volume = am.volume_by_period(runs, granularity, through=today)
         visible = granularity == _DEFAULT_GRANULARITY
         label = _GRANULARITY_LABELS[granularity]
-        custom = volume[["label", "runs"]].to_numpy() if not volume.empty else []
+        run_counts = volume[["runs"]].to_numpy() if not volume.empty else []
 
         fig.add_trace(
             go.Bar(
@@ -114,11 +128,11 @@ def build_volume_figure(runs: pd.DataFrame, today: date) -> go.Figure:
                 marker_color=_COLOR_KM,
                 width=_BAR_WIDTH_MS[granularity],
                 visible=visible,
-                customdata=custom,
-                hovertemplate=(
-                    "%{customdata[0]}<br>%{y:.1f} km"
-                    "<br>%{customdata[1]} runs<extra></extra>"
-                ),
+                customdata=run_counts,
+                xhoverformat=_HOVER_DATE_FORMAT[granularity],
+                # No <extra></extra>: under unified hover the trace name labels
+                # the row, and the period already heads the card.
+                hovertemplate="%{y:.1f} km<br>%{customdata[0]} runs",
             ),
             secondary_y=False,
         )
@@ -131,13 +145,15 @@ def build_volume_figure(runs: pd.DataFrame, today: date) -> go.Figure:
                 line=dict(color=_COLOR_HOURS, width=2),
                 marker=dict(size=5),
                 visible=visible,
-                customdata=custom,
-                hovertemplate="%{customdata[0]}<br>%{y:.1f} h<extra></extra>",
+                xhoverformat=_HOVER_DATE_FORMAT[granularity],
+                hovertemplate="%{y:.1f} h",
             ),
             secondary_y=True,
         )
 
-    fig.update_layout(**_layout(height=380, title="Running volume"))
+    fig.update_layout(
+        **_layout(height=380, title="Running volume", hovermode="x unified")
+    )
     fig.update_yaxes(title_text="Distance (km)", secondary_y=False, rangemode="tozero")
     fig.update_yaxes(
         title_text="Moving time (h)", secondary_y=True,
@@ -185,7 +201,8 @@ def build_cumulative_figure(runs: pd.DataFrame, today: date) -> go.Figure:
                     line=dict(color=_COLOR_KM, width=2.5),
                     fill="tozeroy",
                     fillcolor="rgba(37, 99, 235, 0.10)",
-                    hovertemplate="%{x|%d %b}<br>%{y:.0f} km<extra></extra>",
+                    xhoverformat="%d %b %Y",
+                    hovertemplate="%{y:.0f} km",
                 )
             )
 
@@ -202,11 +219,18 @@ def build_cumulative_figure(runs: pd.DataFrame, today: date) -> go.Figure:
                         name=f"At this rate: {projected:,.0f} km",
                         mode="lines",
                         line=dict(color=_COLOR_PROJECTION, width=2, dash="dash"),
-                        hovertemplate="%{x|%d %b}<br>%{y:.0f} km<extra></extra>",
+                        xhoverformat="%d %b %Y",
+                        hovertemplate="%{y:.0f} km",
                     )
                 )
 
-    fig.update_layout(**_layout(height=320, title=f"{today.year} cumulative distance"))
+    fig.update_layout(
+        **_layout(
+            height=320,
+            title=f"{today.year} cumulative distance",
+            hovermode="x unified",
+        )
+    )
     fig.update_yaxes(title_text="Distance (km)", rangemode="tozero")
     return fig
 
@@ -246,6 +270,10 @@ def build_calendar_figure(runs: pd.DataFrame, today: date) -> go.Figure:
                 zmin=0,
                 xgap=3,
                 ygap=3,
+                # The pivot pads the first and last weeks out to seven days.
+                # Those cells are not rest days, they are days outside the log,
+                # and hovering them otherwise reports a blank date and 0.0 km.
+                hoverongaps=False,
                 hovertemplate="%{customdata}<br>%{z:.1f} km<extra></extra>",
                 colorbar=dict(title="km", thickness=12, len=0.9),
             )
@@ -294,11 +322,18 @@ def build_pace_figure(trend: pd.DataFrame, monthly: pd.DataFrame) -> go.Figure:
             )
             if group.empty:
                 continue
+            zone_label = zone or "Unclassified"
+            # Zone is the marker's colour and surface is its fill; both are lost
+            # on a monochrome reading of the chart, so the hover states them.
+            detail = group[["activity_name", "km", "avg_hr"]].copy()
+            detail["surface"] = [
+                "treadmill" if t else "outdoor" for t in group["is_treadmill"]
+            ]
             fig.add_trace(
                 go.Scatter(
                     x=group["date"],
                     y=group["pace_s_km"],
-                    name=zone or "Unclassified",
+                    name=zone_label,
                     mode="markers",
                     marker=dict(
                         size=9,
@@ -312,11 +347,13 @@ def build_pace_figure(trend: pd.DataFrame, monthly: pd.DataFrame) -> go.Figure:
                             color=_ZONE_COLORS.get(zone, _UNKNOWN_ZONE_COLOR),
                         ),
                     ),
-                    customdata=group[["activity_name", "km", "avg_hr"]].to_numpy(),
+                    customdata=detail.to_numpy(),
                     hovertemplate=(
                         "%{customdata[0]}<br>%{x|%d %b %Y}"
                         "<br>%{customdata[1]:.1f} km at %{text}/km"
-                        "<br>%{customdata[2]:.0f} bpm<extra></extra>"
+                        " (%{customdata[3]})"
+                        "<br>%{customdata[2]:.0f} bpm · " + zone_label
+                        + "<extra></extra>"
                     ),
                     text=[seconds_to_pace(p) for p in group["pace_s_km"]],
                 )
@@ -375,14 +412,14 @@ def build_efficiency_figure(efficiency: pd.DataFrame) -> go.Figure:
                 line=dict(color=_COLOR_EFFICIENCY, width=2.5),
                 marker=dict(size=8),
                 customdata=efficiency[["runs"]].to_numpy(),
-                hovertemplate=(
-                    "%{x|%b %Y}<br>EF %{y:.3f}"
-                    "<br>%{customdata[0]} easy runs<extra></extra>"
-                ),
+                xhoverformat="%B %Y",
+                hovertemplate="EF %{y:.3f}<br>%{customdata[0]} easy runs",
             )
         )
 
-    fig.update_layout(**_layout(height=300, title="Aerobic efficiency"))
+    fig.update_layout(
+        **_layout(height=300, title="Aerobic efficiency", hovermode="x unified")
+    )
     fig.update_yaxes(title_text="Metres per minute per bpm")
     return fig
 
