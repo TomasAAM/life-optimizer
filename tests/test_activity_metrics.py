@@ -27,12 +27,19 @@ def _activity(
     avg_hr: float | None = 140.0,
     moving_minutes: float | None = None,
     name: str = "Run",
+    cadence: float | None = 163.0,
+    stride_cm: float | None = 105.0,
+    vertical_oscillation_cm: float | None = 9.2,
+    vertical_ratio_pct: float | None = 8.6,
+    ground_contact_ms: float | None = 270.0,
 ) -> dict:
     """Build one ``garmin_activities`` row.
 
     The duration defaults to a plausible 5:00/km for whatever distance is
     given, so varying the distance alone never trips the implausible-pace
-    guard and quietly drops the row from an assertion.
+    guard and quietly drops the row from an assertion. The running-dynamics
+    defaults are likewise mid-range for this athlete, so a test that cares
+    about one of them can vary it alone.
     """
     if minutes is None:
         minutes = km * _DEFAULT_PACE_MIN_PER_KM
@@ -50,6 +57,11 @@ def _activity(
         "elevation_gain_m": None,
         "avg_hr": avg_hr,
         "max_hr": None if avg_hr is None else avg_hr + 20,
+        "avg_cadence": cadence,
+        "avg_stride_length_cm": stride_cm,
+        "avg_vertical_oscillation_cm": vertical_oscillation_cm,
+        "avg_vertical_ratio_pct": vertical_ratio_pct,
+        "avg_ground_contact_time_ms": ground_contact_ms,
     }
 
 
@@ -389,3 +401,268 @@ def test_performance_series_are_empty_when_there_is_nothing_to_plot() -> None:
     assert am.aerobic_efficiency(trend).empty
     assert am.volume_by_period(empty, "week").empty
     assert am.daily_distance(empty, date(2026, 9, 2)).empty
+
+
+# --- Running dynamics -------------------------------------------------------
+#
+# The judgment calls pinned here are the ones that would still draw a
+# convincing chart if they were wrong: which surface each metric may count,
+# that trends see easy runs only, and that a change is called an improvement
+# only when the metric has a direction to improve in.
+
+
+def _easy_run(day: str, **kwargs) -> dict:
+    """An easy-zone run -- HR 130 falls in Recovery for :func:`_zones`."""
+    return _activity(day, avg_hr=130.0, **kwargs)
+
+
+def test_prepare_runs_carries_every_running_dynamics_column() -> None:
+    runs = am.prepare_runs(_activities([_activity("2026-03-02", cadence=170.0)]))
+    for column in am.FORM_COLUMNS:
+        assert column in runs.columns
+    assert runs["avg_cadence"].iloc[0] == 170.0
+
+
+def test_prepare_runs_survives_a_frame_predating_the_dynamics_columns() -> None:
+    """A frame assembled before the columns existed must not raise."""
+    frame = _activities([_activity("2026-03-02")]).drop(columns=list(am.FORM_COLUMNS))
+    runs = am.prepare_runs(frame)
+    for column in am.FORM_COLUMNS:
+        assert column in runs.columns
+        assert runs[column].isna().all()
+
+
+def test_every_metric_is_sampled_on_both_surfaces_separately() -> None:
+    """Surface is a dimension now, not a filter -- no metric drops belt runs."""
+    trend = am.pace_trend(
+        am.prepare_runs(
+            _activities(
+                [
+                    _easy_run("2026-03-02"),
+                    _easy_run("2026-03-03", activity_type="treadmill_running"),
+                ]
+            )
+        ),
+        _zones(),
+    )
+    for metric in am.FORM_METRICS:
+        assert len(am._metric_sample(trend, metric)) == 2
+        assert len(am._metric_sample(trend, metric, am.OUTDOOR_SURFACE)) == 1
+        assert len(am._metric_sample(trend, metric, am.TREADMILL_SURFACE)) == 1
+
+
+def test_monthly_form_metrics_uses_easy_runs_only() -> None:
+    """A hard session must not move the series -- every metric tracks pace."""
+    trend = am.pace_trend(
+        am.prepare_runs(
+            _activities(
+                [
+                    _easy_run("2026-03-02", cadence=160.0),
+                    _easy_run("2026-03-09", cadence=164.0),
+                    # HR 170 is VO2max: excluded despite the extreme cadence.
+                    _activity("2026-03-16", avg_hr=170.0, cadence=200.0),
+                ]
+            )
+        ),
+        _zones(),
+    )
+    cadence = am.monthly_form_metrics(trend).query(
+        "metric == 'cadence' and surface == 'outdoor'"
+    )
+    assert len(cadence) == 1
+    assert cadence["value"].iloc[0] == 162.0
+    assert cadence["runs"].iloc[0] == 2
+
+
+def test_monthly_form_metrics_is_long_format_over_every_metric() -> None:
+    trend = am.pace_trend(
+        am.prepare_runs(_activities([_easy_run("2026-03-02")])), _zones()
+    )
+    monthly = am.monthly_form_metrics(trend)
+    assert list(monthly.columns) == [
+        "metric", "surface", "month_start", "value", "low", "high", "runs"
+    ]
+    assert set(monthly["metric"]) == {m.key for m in am.FORM_METRICS}
+    assert set(monthly["surface"]) == {am.OUTDOOR_SURFACE}
+
+
+def test_monthly_form_metrics_omits_a_surface_with_no_runs() -> None:
+    """Treadmill-only easy running leaves no outdoor series to draw."""
+    trend = am.pace_trend(
+        am.prepare_runs(
+            _activities([_easy_run("2026-03-02", activity_type="treadmill_running")])
+        ),
+        _zones(),
+    )
+    monthly = am.monthly_form_metrics(trend)
+    assert set(monthly["surface"]) == {am.TREADMILL_SURFACE}
+    assert set(monthly["metric"]) == {m.key for m in am.FORM_METRICS}
+
+
+def test_the_two_surfaces_are_never_pooled_into_one_median() -> None:
+    """Pooling would average a belt reading into an outdoor trend."""
+    trend = am.pace_trend(
+        am.prepare_runs(
+            _activities(
+                [
+                    _easy_run("2026-03-02", cadence=160.0),
+                    _easy_run("2026-03-05", cadence=170.0,
+                              activity_type="treadmill_running"),
+                ]
+            )
+        ),
+        _zones(),
+    )
+    cadence = am.monthly_form_metrics(trend).query("metric == 'cadence'")
+    values = dict(zip(cadence["surface"], cadence["value"]))
+    assert values == {am.OUTDOOR_SURFACE: 160.0, am.TREADMILL_SURFACE: 170.0}
+    assert 165.0 not in set(cadence["value"])
+
+
+def test_monthly_form_metrics_on_an_empty_trend() -> None:
+    monthly = am.monthly_form_metrics(pd.DataFrame())
+    assert monthly.empty
+    assert list(monthly.columns) == [
+        "metric", "surface", "month_start", "value", "low", "high", "runs"
+    ]
+
+
+def test_form_headline_compares_the_last_28_days_against_the_prior_28() -> None:
+    today = date(2026, 3, 29)
+    trend = am.pace_trend(
+        am.prepare_runs(
+            _activities(
+                [
+                    # Recent window is 02 Mar - 29 Mar, prior is 02 Feb - 01 Mar.
+                    _easy_run("2026-01-15", cadence=150.0),   # before both
+                    _easy_run("2026-02-20", cadence=160.0),   # prior window
+                    _easy_run("2026-03-20", cadence=166.0),   # recent window
+                ]
+            )
+        ),
+        _zones(),
+    )
+    cadence = next(h for h in am.form_headline(trend, today) if h.metric.key == "cadence")
+    assert cadence.value == 166.0
+    assert cadence.prior == 160.0
+    assert cadence.runs == 1
+    assert cadence.delta == 6.0
+
+
+def test_form_headline_always_reports_every_metric() -> None:
+    headlines = am.form_headline(pd.DataFrame(), date(2026, 3, 29))
+    assert [h.metric.key for h in headlines] == [m.key for m in am.FORM_METRICS]
+    assert all(h.value is None and h.delta is None for h in headlines)
+
+
+def test_improvement_follows_each_metrics_own_direction() -> None:
+    """Falling vertical ratio is progress; falling cadence is not."""
+    by_key = {m.key: m for m in am.FORM_METRICS}
+    lower_better = am.FormHeadline(by_key["vertical_ratio"], 8.0, 8.5, runs=3)
+    higher_better = am.FormHeadline(by_key["cadence"], 160.0, 165.0, runs=3)
+    assert lower_better.improved is True
+    assert higher_better.improved is False
+
+
+def test_stride_length_has_no_direction_to_improve_in() -> None:
+    """It restates pace, so neither way is progress and neither gets a colour."""
+    stride = next(m for m in am.FORM_METRICS if m.key == "stride_length")
+    assert stride.lower_is_better is None
+    assert am.FormHeadline(stride, 120.0, 100.0, runs=3).improved is None
+
+
+def test_a_change_too_small_to_survive_rounding_is_not_an_improvement() -> None:
+    cadence = next(m for m in am.FORM_METRICS if m.key == "cadence")
+    assert am.FormHeadline(cadence, 163.02, 163.0, runs=3).improved is None
+
+
+def test_exactly_the_two_computed_metrics_are_flagged_as_derived() -> None:
+    """The fact the page leans on when it tells the reader what to trust."""
+    derived = {m.key for m in am.FORM_METRICS if not m.measured}
+    assert derived == {"stride_length", "vertical_ratio"}
+
+
+def test_form_runs_returns_one_row_per_easy_run_per_metric() -> None:
+    """The detail behind the medians, on the same easy-run/surface footing."""
+    trend = am.pace_trend(
+        am.prepare_runs(
+            _activities(
+                [
+                    _easy_run("2026-03-02", cadence=160.0),
+                    _easy_run("2026-03-09", cadence=166.0),
+                    _easy_run("2026-03-12", cadence=164.0,
+                              activity_type="treadmill_running"),
+                    _activity("2026-03-16", avg_hr=170.0),  # VO2max, excluded
+                ]
+            )
+        ),
+        _zones(),
+    )
+    runs = am.form_runs(trend)
+    assert list(runs.columns) == [
+        "metric", "surface", "date", "activity_name", "value"
+    ]
+    cadence = runs.query("metric == 'cadence'")
+    assert len(cadence) == 3
+    outdoor = cadence.query("surface == 'outdoor'")
+    assert sorted(outdoor["value"]) == [160.0, 166.0]
+
+
+def test_form_runs_and_the_monthly_median_see_the_same_sample() -> None:
+    """A marker that is not in the median would be a lie about the line."""
+    trend = am.pace_trend(
+        am.prepare_runs(
+            _activities(
+                [
+                    _easy_run("2026-03-02", cadence=160.0),
+                    _easy_run("2026-03-09", cadence=166.0),
+                    _easy_run("2026-03-20", cadence=164.0,
+                              activity_type="treadmill_running"),
+                ]
+            )
+        ),
+        _zones(),
+    )
+    runs = am.form_runs(trend)
+    monthly = am.monthly_form_metrics(trend)
+    counted = (
+        runs.groupby(["metric", "surface"]).size().rename("n").reset_index()
+    )
+    summed = (
+        monthly.groupby(["metric", "surface"])["runs"].sum().rename("n").reset_index()
+    )
+    pd.testing.assert_frame_equal(counted, summed)
+    # And the outdoor March median really is the median of its two markers.
+    march = monthly.query("metric == 'cadence' and surface == 'outdoor'")
+    assert march["value"].iloc[0] == 163.0
+
+
+def test_form_runs_on_an_empty_trend() -> None:
+    runs = am.form_runs(pd.DataFrame())
+    assert runs.empty
+    assert list(runs.columns) == [
+        "metric", "surface", "date", "activity_name", "value"
+    ]
+
+
+def test_monthly_form_metrics_reports_the_spread_behind_each_median() -> None:
+    """A tight month and a scattered one must not read as the same point."""
+    trend = am.pace_trend(
+        am.prepare_runs(
+            _activities(
+                [
+                    _easy_run("2026-03-02", cadence=155.0),
+                    _easy_run("2026-03-09", cadence=163.0),
+                    _easy_run("2026-03-16", cadence=171.0),
+                ]
+            )
+        ),
+        _zones(),
+    )
+    march = am.monthly_form_metrics(trend).query(
+        "metric == 'cadence' and surface == 'outdoor'"
+    )
+    assert march["value"].iloc[0] == 163.0
+    assert march["low"].iloc[0] == 155.0
+    assert march["high"].iloc[0] == 171.0
+    assert march["runs"].iloc[0] == 3

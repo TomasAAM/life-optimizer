@@ -82,13 +82,18 @@ def fetch_activities(supabase: Client) -> pd.DataFrame:
     pandas.DataFrame
         Columns: start_time_local, activity_name, activity_type,
         training_load, is_multisport, distance_m, duration_s,
-        moving_duration_s, elevation_gain_m, avg_hr, max_hr.
+        moving_duration_s, elevation_gain_m, avg_hr, max_hr, and the running
+        dynamics: avg_cadence, avg_stride_length_cm,
+        avg_vertical_oscillation_cm, avg_vertical_ratio_pct,
+        avg_ground_contact_time_ms.
     """
     return _fetch_all(
         supabase,
         "garmin_activities",
         "start_time_local,activity_name,activity_type,training_load,is_multisport,"
-        "distance_m,duration_s,moving_duration_s,elevation_gain_m,avg_hr,max_hr",
+        "distance_m,duration_s,moving_duration_s,elevation_gain_m,avg_hr,max_hr,"
+        "avg_cadence,avg_stride_length_cm,avg_vertical_oscillation_cm,"
+        "avg_vertical_ratio_pct,avg_ground_contact_time_ms",
         "start_time",
     )
 

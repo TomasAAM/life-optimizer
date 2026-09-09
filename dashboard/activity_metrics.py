@@ -18,6 +18,12 @@ Three conventions are worth stating up front, because they change the numbers:
   ``MIN_PLAUSIBLE_PACE_S_KM``..``MAX_PLAUSIBLE_PACE_S_KM`` is a corrupt
   distance, not a performance. Those rows are flagged rather than dropped, so
   callers can exclude them *and* report how many were excluded.
+* **Surface is a dimension of the form metrics, not a filter on them.** Pace
+  handles the treadmill by exclusion, because belt pace is chosen rather than
+  earned. Running dynamics are reported per surface instead: they are never
+  averaged across the two, so a belt session can neither contaminate an outdoor
+  trend nor be silently thrown away. What differs between the metrics is how
+  much a treadmill distorts them -- see :attr:`FormMetric.measured`.
 """
 
 from __future__ import annotations
@@ -45,6 +51,92 @@ _CONSISTENCY_WINDOW_DAYS = 28
 # Monday, matching the plan weeks and ``dashboard.metrics.weekly_summary``.
 _PERIOD_FREQ = {"week": "W-SUN", "month": "M", "year": "Y"}
 GRANULARITIES = tuple(_PERIOD_FREQ)
+
+
+@dataclass(frozen=True)
+class FormMetric:
+    """One running-dynamics metric and the rules for reading it.
+
+    Parameters
+    ----------
+    key : str
+        Short identifier used in the long-format output and the chart traces.
+    column : str
+        Column carrying the value in the output of :func:`prepare_runs`.
+    label : str
+        Human-readable name for cards, axes and subplot titles.
+    unit : str
+        Unit suffix, rendered next to the value.
+    decimals : int
+        Digits to round and display to.
+    measured : bool
+        ``True`` when the watch measures the quantity directly, which makes its
+        treadmill series as trustworthy as its outdoor one. ``False`` marks a
+        value Garmin derives from recorded distance: the treadmill series then
+        moves with the belt's calibration as much as with the runner, so the
+        two surfaces are not comparable and must never be pooled.
+    lower_is_better : bool or None
+        Direction of improvement, or ``None`` where there is no good direction
+        -- stride length mostly restates pace, so neither way is progress.
+    derivation : str
+        How the value is arrived at, stated on the page so a derived metric is
+        never read as an independent signal.
+    """
+
+    key: str
+    column: str
+    label: str
+    unit: str
+    decimals: int
+    measured: bool
+    lower_is_better: bool | None
+    derivation: str
+
+
+# Ordered measured-first, so the layout itself separates the two sensor
+# channels from the ratios computed out of them and pace.
+FORM_METRICS: tuple[FormMetric, ...] = (
+    FormMetric(
+        key="cadence", column="avg_cadence", label="Cadence", unit="spm",
+        decimals=1, measured=True, lower_is_better=False,
+        derivation="Steps per minute, counted by the accelerometer.",
+    ),
+    FormMetric(
+        key="vertical_oscillation", column="avg_vertical_oscillation_cm",
+        label="Vertical oscillation", unit="cm",
+        decimals=2, measured=True, lower_is_better=True,
+        derivation="Torso rise and fall per step, measured directly.",
+    ),
+    FormMetric(
+        key="stride_length", column="avg_stride_length_cm",
+        label="Stride length", unit="cm",
+        decimals=1, measured=False, lower_is_better=None,
+        derivation="Speed divided by cadence — a restatement of pace, not a "
+                   "separate signal.",
+    ),
+    FormMetric(
+        key="vertical_ratio", column="avg_vertical_ratio_pct",
+        label="Vertical ratio", unit="%",
+        decimals=2, measured=False, lower_is_better=True,
+        derivation="Vertical oscillation divided by stride length — bounce as "
+                   "a share of forward travel.",
+    ),
+    FormMetric(
+        key="ground_contact", column="avg_ground_contact_time_ms",
+        label="Ground contact", unit="ms",
+        decimals=1, measured=True, lower_is_better=True,
+        derivation="Milliseconds each foot spends on the ground, measured "
+                   "directly.",
+    ),
+)
+
+FORM_COLUMNS = tuple(m.column for m in FORM_METRICS)
+
+# Running dynamics are always reported per surface, never pooled across the
+# two. Outdoor leads, because it is the surface every metric is comparable on.
+OUTDOOR_SURFACE = "outdoor"
+TREADMILL_SURFACE = "treadmill"
+SURFACES = (OUTDOOR_SURFACE, TREADMILL_SURFACE)
 
 
 @dataclass(frozen=True)
@@ -115,6 +207,31 @@ class ConsistencySummary:
     days_since_last_run: int | None
 
 
+def _numeric_column(frame: pd.DataFrame, column: str) -> pd.Series:
+    """Coerce a column to numeric, yielding all-NaN when it is absent.
+
+    Running dynamics arrived later than the rest of the schema, so a frame
+    assembled before then simply lacks the columns. Treating "missing column"
+    and "missing value" alike keeps every downstream metric degrading to an
+    empty chart instead of a ``KeyError``.
+
+    Parameters
+    ----------
+    frame : pandas.DataFrame
+        Source frame.
+    column : str
+        Column to read.
+
+    Returns
+    -------
+    pandas.Series
+        Numeric values aligned to ``frame.index``.
+    """
+    if column not in frame:
+        return pd.Series(np.nan, index=frame.index, dtype="float64")
+    return pd.to_numeric(frame[column], errors="coerce")
+
+
 def _effective_seconds(moving: pd.Series, elapsed: pd.Series) -> pd.Series:
     """Pick the moving clock per activity, falling back to elapsed.
 
@@ -152,7 +269,7 @@ def prepare_runs(activities: pd.DataFrame) -> pd.DataFrame:
     """
     columns = [
         "date", "activity_name", "km", "seconds", "pace_s_km",
-        "avg_hr", "is_treadmill", "implausible",
+        "avg_hr", "is_treadmill", "implausible", *FORM_COLUMNS,
     ]
     if activities.empty or "activity_type" not in activities:
         return pd.DataFrame(columns=columns)
@@ -184,6 +301,7 @@ def prepare_runs(activities: pd.DataFrame) -> pd.DataFrame:
             "implausible": ~pace.between(
                 MIN_PLAUSIBLE_PACE_S_KM, MAX_PLAUSIBLE_PACE_S_KM
             ),
+            **{col: _numeric_column(runs, col) for col in FORM_COLUMNS},
         }
     )
     return out.sort_values("date").reset_index(drop=True)
@@ -481,16 +599,37 @@ def pace_trend(runs: pd.DataFrame, zones: pd.DataFrame) -> pd.DataFrame:
     -------
     pandas.DataFrame
         Columns: date, activity_name, km, pace_s_km, avg_hr, is_treadmill,
-        zone -- implausible runs excluded.
+        the :data:`FORM_COLUMNS` running dynamics, and zone -- implausible runs
+        excluded.
     """
     usable = valid_runs(runs)
     if usable.empty:
         return pd.DataFrame(
             columns=["date", "activity_name", "km", "pace_s_km",
-                     "avg_hr", "is_treadmill", "zone"]
+                     "avg_hr", "is_treadmill", *FORM_COLUMNS, "zone"]
         )
     out = usable.assign(zone=assign_zones(usable, zones))
     return out.drop(columns=["implausible", "seconds"]).reset_index(drop=True)
+
+
+def _easy(trend: pd.DataFrame, outdoor_only: bool = True) -> pd.DataFrame:
+    """Easy-zone runs, optionally restricted to outdoor ones.
+
+    Easy runs are the comparable basis for any trend: they hold intensity
+    roughly constant, so a change in the series is a change in the athlete
+    rather than in how hard a given session was chosen to be.
+
+    ``outdoor_only`` exists because the surface rule is not uniform. Anything
+    computed from recorded distance -- pace, stride length, vertical ratio --
+    tracks a treadmill's calibration rather than the runner, so belt sessions
+    must go. Anything the accelerometer measures outright -- cadence, vertical
+    oscillation, ground contact -- is just as valid indoors, and dropping those
+    sessions would throw away a third of the sample for nothing.
+    """
+    if trend.empty:
+        return trend
+    easy = trend[trend["zone"].isin(EASY_ZONES)]
+    return easy[~easy["is_treadmill"]] if outdoor_only else easy
 
 
 def _easy_outdoor(trend: pd.DataFrame) -> pd.DataFrame:
@@ -499,9 +638,265 @@ def _easy_outdoor(trend: pd.DataFrame) -> pd.DataFrame:
     Treadmill pace is set by the belt rather than earned, so mixing it in
     would track the machine's settings, not fitness.
     """
-    if trend.empty:
-        return trend
-    return trend[trend["zone"].isin(EASY_ZONES) & ~trend["is_treadmill"]]
+    return _easy(trend, outdoor_only=True)
+
+
+def _metric_sample(
+    trend: pd.DataFrame, metric: FormMetric, surface: str | None = None
+) -> pd.DataFrame:
+    """Easy runs carrying a usable value for one form metric.
+
+    Parameters
+    ----------
+    trend : pandas.DataFrame
+        Output of :func:`pace_trend`.
+    metric : FormMetric
+        The metric whose column to read.
+    surface : {"outdoor", "treadmill"}, optional
+        Restrict to one surface. Omitted, both are returned -- but nothing
+        downstream pools them, because a treadmill and an outdoor session are
+        not the same measurement for a derived metric.
+
+    Returns
+    -------
+    pandas.DataFrame
+        ``trend`` rows eligible for this metric, with the value non-null.
+    """
+    if trend.empty or metric.column not in trend:
+        return trend.iloc[0:0] if not trend.empty else trend
+    sample = _easy(trend, outdoor_only=False).dropna(subset=[metric.column])
+    if surface is None:
+        return sample
+    return sample[sample["is_treadmill"] == (surface == TREADMILL_SURFACE)]
+
+
+def monthly_form_metrics(trend: pd.DataFrame) -> pd.DataFrame:
+    """Median of every running-dynamics metric per month and surface.
+
+    Two rules shape this series.
+
+    *Easy runs only.* All five metrics move with speed -- measured over this
+    log, pace explains 95% of the variance in stride length and 96% in vertical
+    ratio -- so a series built from every run would report how hard each month
+    was raced rather than how the athlete's form changed. Holding intensity
+    roughly constant leaves the remaining movement attributable to the runner.
+
+    *Outdoor and treadmill kept apart.* Pooling them would average two
+    different measurements: on the derived metrics a belt's distance
+    calibration moves the value as much as the running does, and even on the
+    measured ones the two surfaces are worth telling apart. Splitting rather
+    than excluding also keeps every session in view.
+
+    The median rather than the mean, because a single mis-recorded session
+    should not drag a month.
+
+    Parameters
+    ----------
+    trend : pandas.DataFrame
+        Output of :func:`pace_trend`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Long format -- columns: metric, surface, month_start, value, low, high,
+        runs -- in :data:`FORM_METRICS` then :data:`SURFACES` order. ``low`` and
+        ``high`` bound the runs the median was taken over, so a reader can tell
+        a tight month from a scattered one without hovering each run. A
+        metric/surface pair with no usable runs is absent rather than present as
+        empty rows.
+    """
+    columns = ["metric", "surface", "month_start", "value", "low", "high", "runs"]
+    frames: list[pd.DataFrame] = []
+
+    for metric in FORM_METRICS:
+        for surface in SURFACES:
+            sample = _metric_sample(trend, metric, surface)
+            if sample.empty:
+                continue
+            grouped = sample.groupby(sample["date"].dt.to_period("M")).agg(
+                value=(metric.column, "median"),
+                low=(metric.column, "min"),
+                high=(metric.column, "max"),
+                runs=(metric.column, "size"),
+            )
+            frames.append(
+                pd.DataFrame(
+                    {
+                        "metric": metric.key,
+                        "surface": surface,
+                        "month_start": grouped.index.start_time,
+                        "value": grouped["value"].round(metric.decimals).to_numpy(),
+                        "low": grouped["low"].round(metric.decimals).to_numpy(),
+                        "high": grouped["high"].round(metric.decimals).to_numpy(),
+                        "runs": grouped["runs"].astype(int).to_numpy(),
+                    }
+                )
+            )
+
+    if not frames:
+        return pd.DataFrame(columns=columns)
+    return pd.concat(frames, ignore_index=True)[columns]
+
+
+def form_runs(trend: pd.DataFrame) -> pd.DataFrame:
+    """Every easy run's value for each form metric, one row per run.
+
+    The monthly medians in :func:`monthly_form_metrics` answer "where did this
+    month sit"; these answer "out of what". A median over five runs and a median
+    over five runs that disagree by 8 spm are the same point on a line and very
+    different training, so the runs are drawn behind the line rather than
+    summarised away.
+
+    Parameters
+    ----------
+    trend : pandas.DataFrame
+        Output of :func:`pace_trend`.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Long format -- columns: metric, surface, date, activity_name, value --
+        in :data:`FORM_METRICS` then :data:`SURFACES` order. Easy runs only, and
+        the surfaces stay apart, matching the monthly series exactly.
+    """
+    columns = ["metric", "surface", "date", "activity_name", "value"]
+    frames: list[pd.DataFrame] = []
+
+    for metric in FORM_METRICS:
+        for surface in SURFACES:
+            sample = _metric_sample(trend, metric, surface)
+            if sample.empty:
+                continue
+            frames.append(
+                pd.DataFrame(
+                    {
+                        "metric": metric.key,
+                        "surface": surface,
+                        "date": sample["date"].to_numpy(),
+                        "activity_name": sample["activity_name"].to_numpy(),
+                        "value": sample[metric.column]
+                        .round(metric.decimals)
+                        .to_numpy(),
+                    }
+                )
+            )
+
+    if not frames:
+        return pd.DataFrame(columns=columns)
+    return pd.concat(frames, ignore_index=True)[columns]
+
+
+@dataclass(frozen=True)
+class FormHeadline:
+    """One form metric over the recent window, against the window before it.
+
+    The headline figure is the **outdoor** median, so all five cards mean the
+    same thing and the change is always outdoor-against-outdoor. The treadmill
+    median rides alongside rather than being folded in: for a derived metric
+    the two are not the same measurement, and even for a measured one the split
+    is worth seeing.
+
+    Parameters
+    ----------
+    metric : FormMetric
+        The metric being summarised.
+    value, prior : float or None
+        Outdoor median over the last 28 days and over the 28 days before that,
+        or ``None`` when no eligible run falls in that window.
+    runs : int
+        Outdoor runs behind ``value``.
+    treadmill_value : float or None
+        Treadmill median over the last 28 days, or ``None``.
+    treadmill_runs : int
+        Treadmill runs behind ``treadmill_value``.
+    """
+
+    metric: FormMetric
+    value: float | None
+    prior: float | None
+    runs: int
+    treadmill_value: float | None = None
+    treadmill_runs: int = 0
+
+    @property
+    def delta(self) -> float | None:
+        """Change against the prior window, or ``None`` if either is missing."""
+        if self.value is None or self.prior is None:
+            return None
+        return self.value - self.prior
+
+    @property
+    def improved(self) -> bool | None:
+        """Whether the change is an improvement.
+
+        ``None`` when the metric has no good direction, when the change is
+        negligible, or when there is nothing to compare against -- all three
+        should read as neutral rather than as progress or regression.
+        """
+        delta = self.delta
+        if delta is None or self.metric.lower_is_better is None:
+            return None
+        if abs(delta) < 0.5 * 10 ** -self.metric.decimals:
+            return None
+        return delta < 0 if self.metric.lower_is_better else delta > 0
+
+
+def form_headline(trend: pd.DataFrame, today: date) -> list[FormHeadline]:
+    """Summarise each form metric over the last 28 days against the prior 28.
+
+    The window matches :func:`consistency`, so "recent" means the same span
+    everywhere on the tab. Easy runs only, and outdoor and treadmill reported
+    separately, for the reasons given in :func:`monthly_form_metrics`.
+
+    Parameters
+    ----------
+    trend : pandas.DataFrame
+        Output of :func:`pace_trend`.
+    today : datetime.date
+        The day the dashboard is being built for.
+
+    Returns
+    -------
+    list of FormHeadline
+        One entry per metric in :data:`FORM_METRICS` order, always the full
+        set -- a metric with no data reports ``None`` rather than vanishing.
+    """
+    window = timedelta(days=_CONSISTENCY_WINDOW_DAYS)
+    recent_start = today - window + timedelta(days=1)
+    prior_start = recent_start - window
+
+    def _median(sample: pd.DataFrame, column: str, start: date, end: date):
+        if sample.empty:
+            return None, 0
+        dates = sample["date"].dt.date
+        rows = sample[(dates >= start) & (dates <= end)]
+        if rows.empty:
+            return None, 0
+        return float(rows[column].median()), int(len(rows))
+
+    headlines = []
+    for metric in FORM_METRICS:
+        outdoor = _metric_sample(trend, metric, OUTDOOR_SURFACE)
+        treadmill = _metric_sample(trend, metric, TREADMILL_SURFACE)
+        value, runs = _median(outdoor, metric.column, recent_start, today)
+        prior, _ = _median(
+            outdoor, metric.column, prior_start,
+            recent_start - timedelta(days=1),
+        )
+        belt, belt_runs = _median(treadmill, metric.column, recent_start, today)
+        headlines.append(
+            FormHeadline(
+                metric=metric,
+                value=None if value is None else round(value, metric.decimals),
+                prior=None if prior is None else round(prior, metric.decimals),
+                runs=runs,
+                treadmill_value=(
+                    None if belt is None else round(belt, metric.decimals)
+                ),
+                treadmill_runs=belt_runs,
+            )
+        )
+    return headlines
 
 
 def monthly_easy_pace(trend: pd.DataFrame) -> pd.DataFrame:

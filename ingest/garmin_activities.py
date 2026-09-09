@@ -81,6 +81,15 @@ def _parse_activity(activity: dict[str, Any]) -> dict[str, Any]:
         "aerobic_te": activity.get("aerobicTrainingEffect"),
         "anaerobic_te": activity.get("anaerobicTrainingEffect"),
         "avg_cadence": activity.get("averageRunningCadenceInStepsPerMinute"),
+        # Running dynamics. Garmin reports stride length and vertical
+        # oscillation in centimetres, vertical ratio as a percentage and
+        # ground contact time in milliseconds; the column names carry the
+        # unit so nothing downstream has to infer it. Absent on non-running
+        # activities, and on the odd run whose distance failed to record.
+        "avg_stride_length_cm": activity.get("avgStrideLength"),
+        "avg_vertical_oscillation_cm": activity.get("avgVerticalOscillation"),
+        "avg_vertical_ratio_pct": activity.get("avgVerticalRatio"),
+        "avg_ground_contact_time_ms": activity.get("avgGroundContactTime"),
         "is_multisport": type_key == _MULTISPORT_TYPE_KEY,
     }
 
