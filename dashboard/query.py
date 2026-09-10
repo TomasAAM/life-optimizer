@@ -98,6 +98,25 @@ def fetch_activities(supabase: Client) -> pd.DataFrame:
     )
 
 
+def fetch_body_composition(supabase: Client) -> pd.DataFrame:
+    """Fetch every smart-scale weigh-in.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns: measured_at_local, weight_kg, body_fat_pct, lean_mass_kg,
+        bone_mass_kg, body_water_kg, source. One row per weigh-in, oldest
+        first. Empty when the relay sheet has not been wired up yet.
+    """
+    return _fetch_all(
+        supabase,
+        "body_composition",
+        "measured_at_local,weight_kg,body_fat_pct,lean_mass_kg,bone_mass_kg,"
+        "body_water_kg,source",
+        "measured_at_local",
+    )
+
+
 def fetch_hrv(supabase: Client) -> pd.DataFrame:
     """Fetch Garmin HRV readings (per-reading; aggregated downstream).
 

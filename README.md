@@ -4,9 +4,11 @@ Personal training intelligence dashboard powered by Garmin Connect.
 
 ## Architecture
 
-- **Garmin Connect** -- sole data source: daily wellness (HRV, sleep, stress, body battery,
-  heart rate, respiration) and the training log (activities, duration, distance, HR,
-  native training load)
+- **Garmin Connect** -- source of all *training* data: daily wellness (HRV, sleep, stress,
+  body battery, heart rate, respiration) and the training log (activities, duration,
+  distance, HR, native training load)
+- **Smart scale** -- bodyweight and body composition, via Android Health Connect
+  (see below)
 - **Supabase** -- raw data storage + the training plan (zones, plan weeks, sessions)
 - **GitHub Actions** -- ingestion every day at 9am UTC
 - **Training plan** -- lactate-anchored, generated on demand in multi-week blocks (see below)
@@ -86,6 +88,47 @@ Required secrets:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
+Optional:
+- `BODY_SHEET_CSV_URL` -- if unset, body-composition ingestion is skipped and the
+  rest of the pipeline runs unchanged.
+
+## Body composition (smart scale)
+
+Weight and body fat come from a Bluetooth scale through **Android Health Connect**.
+Health Connect is an *on-device* store: its read API is a Kotlin/Android SDK with no
+REST, server-side or CLI access, so nothing running in GitHub Actions can read it
+directly. The chain that makes it reachable is:
+
+```
+Vitalia scale -> Fitdays app -> Health Connect
+  -> on-device exporter (scheduled background read)
+  -> Google Sheet, published to the web as CSV
+  -> ingest/body_composition.py -> Supabase
+```
+
+Publishing the sheet as CSV is what avoids a Google service account -- the URL is the
+only credential, so **keep it unguessable and treat it as a secret**. Set it as
+`BODY_SHEET_CSV_URL`.
+
+The whole sheet is re-read and upserted on every run, so the ingest is idempotent and
+a row corrected in the sheet corrects in Supabase on the next run.
+
+Two things worth knowing about the data:
+
+- **Only weight is measured.** The scale reports body fat, muscle, water, bone,
+  visceral fat and metabolic age from a *single* bioimpedance reading pushed through
+  the vendor's undisclosed regression, so those are one estimate shown many ways
+  rather than independent metrics. The dashboard draws the derived split dashed.
+- **Health Connect carries about five of the scale's seventeen metrics** -- weight,
+  body fat, lean mass, bone mass, body water. It has no record type for visceral fat,
+  metabolic age, physique rating or BMI, so they are dropped in transit. Nothing
+  independent is lost, for the reason above.
+
+Timestamps are stored as **local wall clock** (`measured_at_local`), not UTC, because
+`BENCHMARKS.md` prescribes weighing fasted in the morning and the dashboard flags
+readings taken off that protocol -- normalising to UTC would shift a Santiago 07:12
+weigh-in to 10:12 and mislabel it.
+
 ## Database schema
 
 | Table | Rows | Description |
@@ -96,6 +139,7 @@ Required secrets:
 | `garmin_heart_rate_readings` | ~300 per day | 2-min HR all day |
 | `garmin_stress_readings` | ~200 per day | 3-min stress all day |
 | `garmin_training_readiness` | 2-4 per day | Readiness snapshots |
+| `body_composition` | 1 per weigh-in | Weight + body-fat estimate from the smart scale |
 
 ### Retired: Strava (frozen archive)
 

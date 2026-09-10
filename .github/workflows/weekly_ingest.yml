@@ -37,6 +37,8 @@ jobs:
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Optional: unset simply skips body-composition ingestion.
+          BODY_SHEET_CSV_URL: ${{ secrets.BODY_SHEET_CSV_URL }}
         run: python -m ingest.run
 
       - name: Build dashboard

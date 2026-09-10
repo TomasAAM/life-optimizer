@@ -21,7 +21,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from supabase import create_client
 
-from ingest import garmin, garmin_activities
+from ingest import body_composition, garmin, garmin_activities
 
 # Resolve .env relative to this file's project root so it works
 # whether called as `python -m ingest.run` or via GitHub Actions.
@@ -103,6 +103,15 @@ def main() -> None:
         garmin_activities.ingest(supabase, garmin_client, since=since)
     except Exception as exc:  # noqa: BLE001
         logger.error("Garmin ingestion failed: %s", exc, exc_info=True)
+
+    # Independent of Garmin: the scale reaches Supabase through a Health
+    # Connect relay sheet, not through Garmin Connect, so a Garmin outage must
+    # not take the weigh-ins down with it.
+    logger.info("Running body-composition ingestion")
+    try:
+        body_composition.ingest(supabase)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Body-composition ingestion failed: %s", exc, exc_info=True)
 
     logger.info("Ingestion pipeline complete")
 

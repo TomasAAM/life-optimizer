@@ -12,7 +12,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from dashboard import activity_metrics, metrics, metrics_tab, query, render, zones
+from dashboard import (
+    activity_metrics,
+    body_tab,
+    metrics,
+    metrics_tab,
+    query,
+    render,
+    zones,
+)
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 load_dotenv(_PROJECT_ROOT / ".env", override=True)
@@ -106,12 +114,16 @@ def main() -> None:
         int(runs["implausible"].sum()) if not runs.empty else 0,
     )
 
+    body = query.fetch_body_composition(supabase)
+    body_html = body_tab.body_section_html(body, today)
+    logger.info("Body composition: %d weigh-ins", len(body))
+
     fig = render.build_figure(load_series, hrv_series)
     zones_fig = zones.build_zone_comparison_figure()
     pace_fig = zones.build_pace_comparison_figure()
     html = render.render_html(
         fig, snapshot, weekly, zones_fig, pace_fig,
-        plan=plan_view, metrics_html=metrics_html,
+        plan=plan_view, metrics_html=metrics_html, body_html=body_html,
     )
 
     _OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)

@@ -729,6 +729,7 @@ def render_html(
     pace_fig: go.Figure,
     plan: PlanView | None = None,
     metrics_html: str = "",
+    body_html: str = "",
 ) -> str:
     """Assemble the full HTML document.
 
@@ -752,6 +753,10 @@ def render_html(
         Pre-rendered metrics-tab fragment from
         :func:`dashboard.metrics_tab.metrics_section_html`; when empty the tab
         shows a placeholder.
+    body_html : str, optional
+        Pre-rendered body-composition fragment from
+        :func:`dashboard.body_tab.body_section_html`; when empty the tab shows
+        a placeholder.
 
     Returns
     -------
@@ -766,6 +771,10 @@ def render_html(
     plan_html = _plan_section(plan) if plan is not None else ""
     metrics_section = metrics_html or (
         "<h2>Metrics</h2><div class='panel'><p>No metrics available yet.</p></div>"
+    )
+    body_section = body_html or (
+        "<h2>Body composition</h2><div class='panel'><p>No weigh-ins "
+        "available yet.</p></div>"
     )
     stylesheet = styles.stylesheet()
     page_script = _page_script()
@@ -794,6 +803,7 @@ def render_html(
   <div class="tabs">
     <button class="tab-btn active" data-tab="plan">Training plan</button>
     <button class="tab-btn" data-tab="metrics">Metrics</button>
+    <button class="tab-btn" data-tab="body">Body</button>
     <button class="tab-btn" data-tab="training">Training load</button>
     <button class="tab-btn" data-tab="zones">Zones</button>
   </div>
@@ -804,6 +814,10 @@ def render_html(
 
   <div class="tab-panel" id="tab-metrics">
     {metrics_section}
+  </div>
+
+  <div class="tab-panel" id="tab-body">
+    {body_section}
   </div>
 
   <div class="tab-panel" id="tab-training">
