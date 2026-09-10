@@ -19,6 +19,8 @@ from dashboard import (
     metrics_tab,
     query,
     render,
+    strength_metrics,
+    strength_tab,
     zones,
 )
 
@@ -118,12 +120,28 @@ def main() -> None:
     body_html = body_tab.body_section_html(body, today)
     logger.info("Body composition: %d weigh-ins", len(body))
 
+    exercises = strength_metrics.prepare_exercises(
+        query.fetch_activity_exercises(supabase), activities
+    )
+    strength_sets = strength_metrics.prepare_sets(
+        query.fetch_exercise_sets(supabase), activities
+    )
+    strength_html = strength_tab.strength_section_html(exercises, strength_sets, today)
+    logger.info(
+        "Strength: %d exercises over %d sessions, %d working sets (%d identified)",
+        len(exercises),
+        exercises["activity_id"].nunique() if not exercises.empty else 0,
+        len(strength_sets),
+        int(strength_sets["settled"].sum()) if not strength_sets.empty else 0,
+    )
+
     fig = render.build_figure(load_series, hrv_series)
     zones_fig = zones.build_zone_comparison_figure()
     pace_fig = zones.build_pace_comparison_figure()
     html = render.render_html(
         fig, snapshot, weekly, zones_fig, pace_fig,
         plan=plan_view, metrics_html=metrics_html, body_html=body_html,
+        strength_html=strength_html,
     )
 
     _OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)

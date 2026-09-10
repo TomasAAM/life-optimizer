@@ -21,7 +21,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from supabase import create_client
 
-from ingest import body_composition, garmin, garmin_activities
+from ingest import body_composition, exercise_sets, garmin, garmin_activities
 
 # Resolve .env relative to this file's project root so it works
 # whether called as `python -m ingest.run` or via GitHub Actions.
@@ -100,7 +100,10 @@ def main() -> None:
         # activity ingestion to avoid a second SSO login.
         garmin_client = garmin.get_client()
         garmin.ingest(supabase, since=since, client=garmin_client)
-        garmin_activities.ingest(supabase, garmin_client, since=since)
+        activities = garmin_activities.ingest(supabase, garmin_client, since=since)
+        # Reuses the payloads just fetched rather than asking for the window
+        # again; only the set-bearing sessions cost a call of their own.
+        exercise_sets.ingest(supabase, garmin_client, activities)
     except Exception as exc:  # noqa: BLE001
         logger.error("Garmin ingestion failed: %s", exc, exc_info=True)
 

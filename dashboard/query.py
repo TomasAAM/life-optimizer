@@ -80,7 +80,7 @@ def fetch_activities(supabase: Client) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        Columns: start_time_local, activity_name, activity_type,
+        Columns: activity_id, start_time_local, activity_name, activity_type,
         training_load, is_multisport, distance_m, duration_s,
         moving_duration_s, elevation_gain_m, avg_hr, max_hr, and the running
         dynamics: avg_cadence, avg_stride_length_cm,
@@ -90,8 +90,9 @@ def fetch_activities(supabase: Client) -> pd.DataFrame:
     return _fetch_all(
         supabase,
         "garmin_activities",
-        "start_time_local,activity_name,activity_type,training_load,is_multisport,"
-        "distance_m,duration_s,moving_duration_s,elevation_gain_m,avg_hr,max_hr,"
+        "activity_id,start_time_local,activity_name,activity_type,training_load,"
+        "is_multisport,distance_m,duration_s,moving_duration_s,elevation_gain_m,"
+        "avg_hr,max_hr,"
         "avg_cadence,avg_stride_length_cm,avg_vertical_oscillation_cm,"
         "avg_vertical_ratio_pct,avg_ground_contact_time_ms",
         "start_time",
@@ -114,6 +115,47 @@ def fetch_body_composition(supabase: Client) -> pd.DataFrame:
         "measured_at_local,weight_kg,body_fat_pct,lean_mass_kg,bone_mass_kg,"
         "body_water_kg,source",
         "measured_at_local",
+    )
+
+
+def fetch_activity_exercises(supabase: Client) -> pd.DataFrame:
+    """Fetch the per-exercise breakdown of every set-bearing session.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns: activity_id, category, sub_category, sets, reps, volume_kg,
+        max_weight_kg, active_duration_s. One row per exercise per session;
+        ``sub_category`` is an empty string where Garmin named only the
+        category. Carries no date of its own -- it is joined onto
+        ``garmin_activities`` in :func:`dashboard.strength_metrics.prepare_exercises`.
+    """
+    return _fetch_all(
+        supabase,
+        "garmin_activity_exercises",
+        "activity_id,category,sub_category,sets,reps,volume_kg,max_weight_kg,"
+        "active_duration_s",
+        "activity_id",
+    )
+
+
+def fetch_exercise_sets(supabase: Client) -> pd.DataFrame:
+    """Fetch every individual strength set.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Columns: activity_id, set_index, set_type, start_time, duration_s,
+        reps, weight_kg, category, exercise_name, probability_pct. Includes
+        rest sets, which :mod:`dashboard.strength_metrics` filters according to
+        what each panel is asking.
+    """
+    return _fetch_all(
+        supabase,
+        "garmin_exercise_sets",
+        "activity_id,set_index,set_type,start_time,duration_s,reps,weight_kg,"
+        "category,exercise_name,probability_pct",
+        "start_time",
     )
 
 

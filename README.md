@@ -6,7 +6,8 @@ Personal training intelligence dashboard powered by Garmin Connect.
 
 - **Garmin Connect** -- source of all *training* data: daily wellness (HRV, sleep, stress,
   body battery, heart rate, respiration) and the training log (activities, duration,
-  distance, HR, native training load)
+  distance, HR, native training load, and the exercises, sets and loads behind
+  every strength session)
 - **Smart scale** -- bodyweight and body composition, via Android Health Connect
   (see below)
 - **Supabase** -- raw data storage + the training plan (zones, plan weeks, sessions)
@@ -78,6 +79,21 @@ cp .env.example .env
 python ingest/run.py
 ```
 
+### 5. Backfill the strength history (once)
+
+The daily pipeline only looks at its sync window, so the exercise tables start
+empty. The per-exercise summary rides along in the activity payload and costs
+nothing extra; the per-set detail costs one Garmin call per strength or HIIT
+session, so the history is loaded in one pass:
+
+```bash
+python -m scripts.backfill_exercise_sets
+```
+
+Safe to re-run — every session is rewritten wholesale rather than upserted, so a
+movement renamed in Garmin Connect corrects itself on the next pass. Pass a date
+to start later, e.g. `python -m scripts.backfill_exercise_sets 2026-07-01`.
+
 ## GitHub Actions
 
 The workflow runs every day at 9am UTC. You can also trigger it manually from the Actions tab.
@@ -134,6 +150,8 @@ weigh-in to 10:12 and mislabel it.
 | Table | Rows | Description |
 |---|---|---|
 | `garmin_activities` | 1 per session | Summary + native training load |
+| `garmin_activity_exercises` | 1 per exercise per session | What was lifted: sets, reps, tonnage, heaviest load |
+| `garmin_exercise_sets` | 1 per set (rests included) | The individual set, with Garmin's confidence that it named the movement |
 | `garmin_daily_wellness` | 1 per day | Daily biometric summary |
 | `garmin_hrv_readings` | ~73 per night | 5-min HRV during sleep |
 | `garmin_heart_rate_readings` | ~300 per day | 2-min HR all day |

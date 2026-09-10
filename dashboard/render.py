@@ -730,6 +730,7 @@ def render_html(
     plan: PlanView | None = None,
     metrics_html: str = "",
     body_html: str = "",
+    strength_html: str = "",
 ) -> str:
     """Assemble the full HTML document.
 
@@ -757,6 +758,10 @@ def render_html(
         Pre-rendered body-composition fragment from
         :func:`dashboard.body_tab.body_section_html`; when empty the tab shows
         a placeholder.
+    strength_html : str, optional
+        Pre-rendered strength fragment from
+        :func:`dashboard.strength_tab.strength_section_html`; when empty the
+        tab shows a placeholder.
 
     Returns
     -------
@@ -774,6 +779,10 @@ def render_html(
     )
     body_section = body_html or (
         "<h2>Body composition</h2><div class='panel'><p>No weigh-ins "
+        "available yet.</p></div>"
+    )
+    strength_section = strength_html or (
+        "<h2>Strength</h2><div class='panel'><p>No exercise data "
         "available yet.</p></div>"
     )
     stylesheet = styles.stylesheet()
@@ -803,6 +812,7 @@ def render_html(
   <div class="tabs">
     <button class="tab-btn active" data-tab="plan">Training plan</button>
     <button class="tab-btn" data-tab="metrics">Metrics</button>
+    <button class="tab-btn" data-tab="strength">Strength</button>
     <button class="tab-btn" data-tab="body">Body</button>
     <button class="tab-btn" data-tab="training">Training load</button>
     <button class="tab-btn" data-tab="zones">Zones</button>
@@ -814,6 +824,10 @@ def render_html(
 
   <div class="tab-panel" id="tab-metrics">
     {metrics_section}
+  </div>
+
+  <div class="tab-panel" id="tab-strength">
+    {strength_section}
   </div>
 
   <div class="tab-panel" id="tab-body">
