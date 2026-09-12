@@ -1,18 +1,15 @@
-"""Body-composition ingestion from the Health Connect relay sheet.
+"""Body-composition ingestion from Fitdays with a relay-sheet fallback.
 
-The smart scale (Vitalia, via the Fitdays app) writes to Android Health
-Connect, which is an **on-device** store: the Jetpack read API is Kotlin-only
-and exposes no REST, server-side or CLI access, so this pipeline cannot read it
-directly. An on-device exporter using Health Connect's documented background
-read permission auto-exports the body-measurement records to a Google Sheet,
-and that sheet -- published to the web as CSV -- is what this module reads.
-Publishing avoids a service account: the URL is the only credential, which is
-also why it must stay unguessable.
+The primary source is the Fitdays cloud. A small Node bridge uses the unofficial
+``fitdays-api`` SDK to authenticate, retrieve the active profile's complete
+history, remove deleted records, and normalize the fields used by the existing
+``body_composition`` table. The bridge writes JSON only to stdout; credentials
+remain in environment variables and never enter its output.
 
-The whole sheet is re-read on every run and upserted on ``measured_at_local``,
-so the
-ingest is idempotent and self-healing -- a row corrected in the sheet corrects
-in Supabase on the next run, with no incremental-sync state to drift.
+The previous Health Connect relay sheet remains available as a fallback. It is
+used when Fitdays credentials are absent or when the cloud request fails and a
+``BODY_SHEET_CSV_URL`` is configured. Both sources re-read their available
+history and upsert on ``measured_at_local``, keeping ingestion idempotent.
 
 Column names are matched by alias rather than by position, because the
 exporter's header text is not a stable contract. Anything unmatched is logged
@@ -23,9 +20,12 @@ named column instead of as a column of nulls.
 from __future__ import annotations
 
 import io
+import json
 import logging
 import os
 import re
+import subprocess
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -35,7 +35,12 @@ from supabase import Client
 logger = logging.getLogger(__name__)
 
 _SHEET_URL_ENV = "BODY_SHEET_CSV_URL"
+_FITDAYS_EMAIL_ENV = "FITDAYS_EMAIL"
+_FITDAYS_PASSWORD_ENV = "FITDAYS_PASSWORD"
 _REQUEST_TIMEOUT_S = 30
+_FITDAYS_TIMEOUT_S = 90
+_PROJECT_ROOT = Path(__file__).parent.parent
+_FITDAYS_EXPORTER = _PROJECT_ROOT / "scripts" / "fitdays_export.mjs"
 
 # Header aliases, matched after ``_normalise_header`` strips case, punctuation
 # and any parenthesised unit. The exporter, a manual sheet and a hand-rolled CSV
@@ -291,23 +296,155 @@ def parse_sheet(csv_text: str) -> list[dict[str, Any]]:
     return rows
 
 
-def ingest(supabase: Client, sheet_url: str | None = None) -> None:
-    """Fetch the relay sheet and upsert every weigh-in into Supabase.
+def parse_fitdays_export(json_text: str) -> list[dict[str, Any]]:
+    """Validate normalized JSON emitted by the Fitdays Node bridge.
 
-    A missing ``BODY_SHEET_CSV_URL`` is not an error: the rest of the pipeline
-    predates this feed and has to keep running before the sheet is wired up.
+    Parameters
+    ----------
+    json_text : str
+        JSON array emitted by ``scripts/fitdays_export.mjs``.
+
+    Returns
+    -------
+    list of dict
+        Rows ready to upsert into ``body_composition``, oldest first.
+
+    Raises
+    ------
+    ValueError
+        If the bridge output is not an array or lacks required columns.
+    """
+    payload = json.loads(json_text)
+    if not isinstance(payload, list):
+        raise ValueError("Fitdays bridge output must be a JSON array")
+    if not payload:
+        return []
+    if not all(isinstance(record, dict) for record in payload):
+        raise ValueError("Every Fitdays bridge record must be a JSON object")
+
+    frame = pd.DataFrame(payload)
+    missing = {"measured_at_local", "weight_kg"} - set(frame.columns)
+    if missing:
+        raise ValueError(
+            f"Fitdays bridge output is missing required column(s): {sorted(missing)}"
+        )
+
+    frame = frame.assign(
+        measured_at_local=pd.to_datetime(
+            frame["measured_at_local"], errors="coerce", format="ISO8601"
+        )
+    )
+    for column in _NUMERIC_COLUMNS:
+        if column not in frame:
+            frame = frame.assign(**{column: None})
+        frame = frame.assign(
+            **{column: pd.to_numeric(frame[column], errors="coerce")}
+        )
+
+    frame = frame.dropna(subset=["measured_at_local", "weight_kg"])
+    frame = frame[frame["weight_kg"] > 0]
+    frame = frame.drop_duplicates(subset=["measured_at_local"], keep="last")
+    frame = frame.sort_values("measured_at_local")
+
+    rows: list[dict[str, Any]] = []
+    for record in frame.to_dict(orient="records"):
+        row: dict[str, Any] = {
+            "measured_at_local": record["measured_at_local"].isoformat(),
+            "weight_kg": float(record["weight_kg"]),
+            "source": "fitdays-cloud",
+        }
+        for column in _NUMERIC_COLUMNS[1:]:
+            value = record.get(column)
+            row[column] = None if value is None or pd.isna(value) else float(value)
+        rows.append(row)
+    return rows
+
+
+def _fitdays_credentials_configured() -> bool:
+    """Return whether both Fitdays credentials are available."""
+    email = os.environ.get(_FITDAYS_EMAIL_ENV, "").strip()
+    password = os.environ.get(_FITDAYS_PASSWORD_ENV, "").strip()
+    if bool(email) != bool(password):
+        logger.error(
+            "Fitdays credentials are incomplete; both %s and %s are required",
+            _FITDAYS_EMAIL_ENV,
+            _FITDAYS_PASSWORD_ENV,
+        )
+        return False
+    return bool(email and password)
+
+
+def _fetch_fitdays_rows() -> list[dict[str, Any]]:
+    """Run the Node bridge and parse its sanitized JSON output."""
+    completed = subprocess.run(
+        ["node", str(_FITDAYS_EXPORTER)],
+        capture_output=True,
+        check=False,
+        cwd=_PROJECT_ROOT,
+        text=True,
+        timeout=_FITDAYS_TIMEOUT_S,
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or "bridge exited without an error message"
+        raise RuntimeError(detail)
+    return parse_fitdays_export(completed.stdout)
+
+
+def _upsert_rows(supabase: Client, rows: list[dict[str, Any]], source: str) -> None:
+    """Upsert normalized body-composition rows and log their coverage."""
+    supabase.table("body_composition").upsert(
+        rows, on_conflict="measured_at_local"
+    ).execute()
+    with_fat = sum(1 for row in rows if row.get("body_fat_pct") is not None)
+    logger.info(
+        "Body composition ingestion complete from %s: %d weigh-ins "
+        "(%d with body fat), %s to %s",
+        source,
+        len(rows),
+        with_fat,
+        rows[0]["measured_at_local"],
+        rows[-1]["measured_at_local"],
+    )
+
+
+def ingest(supabase: Client, sheet_url: str | None = None) -> None:
+    """Fetch Fitdays history and upsert every available weigh-in.
+
+    Fitdays is preferred when both credentials are configured. If it is
+    unavailable, the function tries the Health Connect relay sheet. Missing
+    configuration is not an error because the rest of the ingestion pipeline
+    must continue independently.
 
     Parameters
     ----------
     supabase : supabase.Client
         Authenticated Supabase client.
     sheet_url : str or None, optional
-        Published-CSV URL of the relay sheet. Defaults to the
-        ``BODY_SHEET_CSV_URL`` environment variable.
+        Published-CSV fallback URL. Defaults to ``BODY_SHEET_CSV_URL``.
     """
+    if _fitdays_credentials_configured():
+        try:
+            fitdays_rows = _fetch_fitdays_rows()
+            if fitdays_rows:
+                _upsert_rows(supabase, fitdays_rows, "Fitdays cloud")
+                return
+            logger.warning("Fitdays returned no active measurements; trying fallback")
+        except (
+            FileNotFoundError,
+            json.JSONDecodeError,
+            RuntimeError,
+            subprocess.TimeoutExpired,
+            ValueError,
+        ) as exc:
+            logger.error("Fitdays ingestion failed; trying fallback: %s", exc)
+
     url = sheet_url or os.environ.get(_SHEET_URL_ENV)
     if not url:
-        logger.info("%s not set; skipping body-composition ingestion", _SHEET_URL_ENV)
+        logger.info(
+            "No working body-composition source; configure Fitdays credentials "
+            "or %s",
+            _SHEET_URL_ENV,
+        )
         return
 
     try:
@@ -327,15 +464,4 @@ def ingest(supabase: Client, sheet_url: str | None = None) -> None:
         logger.info("No body-composition rows found in the relay sheet")
         return
 
-    supabase.table("body_composition").upsert(
-        rows, on_conflict="measured_at_local"
-    ).execute()
-    with_fat = sum(1 for r in rows if r.get("body_fat_pct") is not None)
-    logger.info(
-        "Body composition ingestion complete: %d weigh-ins (%d with body fat), "
-        "%s to %s",
-        len(rows),
-        with_fat,
-        rows[0]["measured_at_local"],
-        rows[-1]["measured_at_local"],
-    )
+    _upsert_rows(supabase, rows, "Health Connect relay sheet")

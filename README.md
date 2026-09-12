@@ -8,7 +8,7 @@ Personal training intelligence dashboard powered by Garmin Connect.
   body battery, heart rate, respiration) and the training log (activities, duration,
   distance, HR, native training load, and the exercises, sets and loads behind
   every strength session)
-- **Smart scale** -- bodyweight and body composition, via Android Health Connect
+- **Smart scale** -- bodyweight and body composition, via the Fitdays cloud
   (see below)
 - **Supabase** -- raw data storage + the training plan (zones, plan weeks, sessions)
 - **GitHub Actions** -- ingestion every day at 9am UTC
@@ -103,31 +103,32 @@ Required secrets:
 - `GARMIN_PASSWORD`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `FITDAYS_EMAIL` and `FITDAYS_PASSWORD` -- required together for automatic
+  smart-scale ingestion from the Fitdays cloud.
 
 Optional:
-- `BODY_SHEET_CSV_URL` -- if unset, body-composition ingestion is skipped and the
-  rest of the pipeline runs unchanged.
+- `BODY_SHEET_CSV_URL` -- Health Connect relay fallback if the Fitdays request fails.
 
 ## Body composition (smart scale)
 
-Weight and body fat come from a Bluetooth scale through **Android Health Connect**.
-Health Connect is an *on-device* store: its read API is a Kotlin/Android SDK with no
-REST, server-side or CLI access, so nothing running in GitHub Actions can read it
-directly. The chain that makes it reachable is:
+Weight and body composition come from the Fitdays cloud through the unofficial,
+pinned `fitdays-api` SDK. The scheduled job reads the complete account history,
+keeps the active profile's non-deleted measurements, converts each timestamp to
+the Santiago wall clock, and upserts the result into Supabase:
 
 ```
-Vitalia scale -> Fitdays app -> Health Connect
-  -> on-device exporter (scheduled background read)
-  -> Google Sheet, published to the web as CSV
+Vitalia scale -> Fitdays app -> Fitdays cloud
+  -> scripts/fitdays_export.mjs
   -> ingest/body_composition.py -> Supabase
 ```
 
-Publishing the sheet as CSV is what avoids a Google service account -- the URL is the
-only credential, so **keep it unguessable and treat it as a secret**. Set it as
-`BODY_SHEET_CSV_URL`.
+Set `FITDAYS_EMAIL` and `FITDAYS_PASSWORD` as encrypted repository secrets. The
+account is hosted in the `us` Fitdays region, which the workflow supplies explicitly.
+The credentials are inherited by the Node bridge and never written to its JSON output.
 
-The whole sheet is re-read and upserted on every run, so the ingest is idempotent and
-a row corrected in the sheet corrects in Supabase on the next run.
+The previous Health Connect-to-Sheet route remains available through
+`BODY_SHEET_CSV_URL`. It runs automatically only when the Fitdays source is unavailable.
+Both routes upsert the available history, so repeated runs are idempotent.
 
 Two things worth knowing about the data:
 
@@ -135,10 +136,11 @@ Two things worth knowing about the data:
   visceral fat and metabolic age from a *single* bioimpedance reading pushed through
   the vendor's undisclosed regression, so those are one estimate shown many ways
   rather than independent metrics. The dashboard draws the derived split dashed.
-- **Health Connect carries about five of the scale's seventeen metrics** -- weight,
-  body fat, lean mass, bone mass, body water. It has no record type for visceral fat,
-  metabolic age, physique rating or BMI, so they are dropped in transit. Nothing
-  independent is lost, for the reason above.
+- **The Fitdays API returns the complete vendor record**, including visceral fat,
+  metabolic age, BMI, protein, skeletal muscle and impedance. The current table keeps
+  weight, body fat, lean mass, bone mass and body-water mass because those are the
+  fields used by the dashboard. The bridge can expose the others later without
+  changing the source.
 
 Timestamps are stored as **local wall clock** (`measured_at_local`), not UTC, because
 `BENCHMARKS.md` prescribes weighing fasted in the morning and the dashboard flags

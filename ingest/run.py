@@ -107,9 +107,9 @@ def main() -> None:
     except Exception as exc:  # noqa: BLE001
         logger.error("Garmin ingestion failed: %s", exc, exc_info=True)
 
-    # Independent of Garmin: the scale reaches Supabase through a Health
-    # Connect relay sheet, not through Garmin Connect, so a Garmin outage must
-    # not take the weigh-ins down with it.
+    # Independent of Garmin: the scale reaches Supabase through Fitdays cloud,
+    # with the previous Health Connect sheet as fallback, so a Garmin outage
+    # must not take the weigh-ins down with it.
     logger.info("Running body-composition ingestion")
     try:
         body_composition.ingest(supabase)

@@ -150,9 +150,9 @@ def prepare_weigh_ins(frame: pd.DataFrame) -> pd.DataFrame:
 
     Adds the derived composition split and the protocol flag, and sorts
     chronologically. Fat and lean mass are both derived from weight and body
-    fat rather than read from the reported ``lean_mass_kg``, so that the two
-    always sum to the weight on the same row -- a reported lean mass comes from
-    a separate Health Connect record and need not reconcile.
+    fat rather than read from the stored ``lean_mass_kg``, so that the two
+    always sum to the weight on the same row. The stored value can come from
+    either Fitdays or the Health Connect fallback and can carry vendor rounding.
 
     Parameters
     ----------

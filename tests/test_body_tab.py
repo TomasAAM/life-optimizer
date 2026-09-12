@@ -177,8 +177,10 @@ class TestCompositionFigure:
 class TestFragment:
     def test_empty_state_says_how_to_switch_the_feed_on(self) -> None:
         html = bt.body_section_html(pd.DataFrame(), _TODAY)
+        assert "FITDAYS_EMAIL" in html
+        assert "FITDAYS_PASSWORD" in html
         assert "BODY_SHEET_CSV_URL" in html
-        assert "Health Connect" in html
+        assert "Health Connect relay fallback" in html
 
     def test_renders_cards_charts_and_caveats(self, body: pd.DataFrame) -> None:
         html = bt.body_section_html(body, _TODAY)
@@ -191,12 +193,13 @@ class TestFragment:
         html = bt.body_section_html(body, _TODAY)
         assert "derived, not measured" in html
 
-    def test_explains_the_metrics_health_connect_drops(
+    def test_explains_why_additional_fitdays_metrics_are_not_charted(
         self, body: pd.DataFrame
     ) -> None:
         html = bt.body_section_html(body, _TODAY)
         assert "visceral fat" in html
         assert "metabolic age" in html
+        assert "Fitdays integration retrieves" in html
 
     def test_says_when_no_reading_carries_body_fat(self) -> None:
         html = bt.body_section_html(_raw([("2026-09-08 07:12", 81.3, None)]), _TODAY)

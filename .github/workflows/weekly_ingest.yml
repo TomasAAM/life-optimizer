@@ -23,6 +23,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install Fitdays bridge
+        run: npm ci --omit=dev
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -37,7 +46,11 @@ jobs:
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          # Optional: unset simply skips body-composition ingestion.
+          # Preferred body-composition source. Both credentials are required.
+          FITDAYS_EMAIL: ${{ secrets.FITDAYS_EMAIL }}
+          FITDAYS_PASSWORD: ${{ secrets.FITDAYS_PASSWORD }}
+          FITDAYS_REGION: us
+          # Optional fallback when the Fitdays cloud is unavailable.
           BODY_SHEET_CSV_URL: ${{ secrets.BODY_SHEET_CSV_URL }}
         run: python -m ingest.run
 

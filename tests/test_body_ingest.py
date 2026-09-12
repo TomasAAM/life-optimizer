@@ -1,4 +1,4 @@
-"""Tests for parsing the Health Connect relay sheet.
+"""Tests for Fitdays ingestion and the Health Connect relay fallback.
 
 The sheet is the one part of this feed nobody controls: its headers are written
 by a third-party exporter, its units depend on how that exporter serialises a
@@ -17,6 +17,27 @@ def _csv(*rows: str) -> str:
     """Build a CSV body with the exporter's typical header row."""
     header = "Time,Weight (kg),Body Fat (%),Lean body mass (kg),Data source"
     return "\n".join((header, *rows)) + "\n"
+
+
+class _Supabase:
+    """Capture body-composition upserts without a network call."""
+
+    def __init__(self) -> None:
+        self.rows: list[dict[str, object]] = []
+
+    def table(self, name: str) -> "_Supabase":
+        assert name == "body_composition"
+        return self
+
+    def upsert(
+        self, rows: list[dict[str, object]], on_conflict: str
+    ) -> "_Supabase":
+        assert on_conflict == "measured_at_local"
+        self.rows = rows
+        return self
+
+    def execute(self) -> None:
+        return None
 
 
 class TestHeaderMatching:
@@ -103,6 +124,42 @@ class TestRowSelection:
         assert rows[0]["source"] == "fitdays"
 
 
+class TestFitdaysExport:
+    """The Node bridge must conform to the existing table contract."""
+
+    def test_parses_normalized_rows_oldest_first(self) -> None:
+        rows = bc.parse_fitdays_export(
+            """[
+              {"measured_at_local":"2026-09-11T05:23:13","weight_kg":84.35,
+               "body_fat_pct":14.23,"lean_mass_kg":72.346,
+               "bone_mass_kg":3.62,"body_water_kg":52.2315},
+              {"measured_at_local":"2026-09-10T05:03:16","weight_kg":84.85,
+               "body_fat_pct":14.38}
+            ]"""
+        )
+        assert [row["measured_at_local"] for row in rows] == [
+            "2026-09-10T05:03:16",
+            "2026-09-11T05:23:13",
+        ]
+        assert rows[-1]["body_water_kg"] == 52.2315
+        assert rows[-1]["source"] == "fitdays-cloud"
+
+    def test_rejects_a_non_array_payload(self) -> None:
+        import pytest
+
+        with pytest.raises(ValueError, match="JSON array"):
+            bc.parse_fitdays_export('{"weight_kg": 84.35}')
+
+    def test_drops_invalid_measurements(self) -> None:
+        rows = bc.parse_fitdays_export(
+            """[
+              {"measured_at_local":"bad","weight_kg":84.35},
+              {"measured_at_local":"2026-09-11T05:23:13","weight_kg":0}
+            ]"""
+        )
+        assert rows == []
+
+
 class TestWallClock:
     """Time of day decides whether a reading is on protocol, so it must survive.
 
@@ -160,6 +217,8 @@ class TestIngestGuards:
     """The feed is newer than the pipeline and must never break it."""
 
     def test_an_unset_url_is_a_no_op(self, monkeypatch) -> None:
+        monkeypatch.delenv(bc._FITDAYS_EMAIL_ENV, raising=False)
+        monkeypatch.delenv(bc._FITDAYS_PASSWORD_ENV, raising=False)
         monkeypatch.delenv(bc._SHEET_URL_ENV, raising=False)
         calls: list[object] = []
 
@@ -170,3 +229,57 @@ class TestIngestGuards:
 
         bc.ingest(_Supabase())
         assert calls == []
+
+    def test_fitdays_is_preferred_when_credentials_are_set(
+        self, monkeypatch
+    ) -> None:
+        monkeypatch.setenv(bc._FITDAYS_EMAIL_ENV, "person@example.com")
+        monkeypatch.setenv(bc._FITDAYS_PASSWORD_ENV, "secret")
+        expected = [
+            {
+                "measured_at_local": "2026-09-11T05:23:13",
+                "weight_kg": 84.35,
+                "body_fat_pct": 14.23,
+                "lean_mass_kg": 72.346,
+                "bone_mass_kg": 3.62,
+                "body_water_kg": 52.2315,
+                "source": "fitdays-cloud",
+            }
+        ]
+        monkeypatch.setattr(bc, "_fetch_fitdays_rows", lambda: expected)
+        monkeypatch.setattr(
+            bc.requests,
+            "get",
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("sheet fallback must not run")
+            ),
+        )
+        supabase = _Supabase()
+
+        bc.ingest(supabase, sheet_url="https://example.com/fallback.csv")
+
+        assert supabase.rows == expected
+
+    def test_sheet_is_used_when_fitdays_fails(self, monkeypatch) -> None:
+        monkeypatch.setenv(bc._FITDAYS_EMAIL_ENV, "person@example.com")
+        monkeypatch.setenv(bc._FITDAYS_PASSWORD_ENV, "secret")
+        monkeypatch.setattr(
+            bc,
+            "_fetch_fitdays_rows",
+            lambda: (_ for _ in ()).throw(RuntimeError("temporary failure")),
+        )
+
+        class _Response:
+            text = _csv("2026-09-11 05:23,84.35,14.23,72.35,fitdays")
+
+            @staticmethod
+            def raise_for_status() -> None:
+                return None
+
+        monkeypatch.setattr(bc.requests, "get", lambda *args, **kwargs: _Response())
+        supabase = _Supabase()
+
+        bc.ingest(supabase, sheet_url="https://example.com/fallback.csv")
+
+        assert len(supabase.rows) == 1
+        assert supabase.rows[0]["source"] == "fitdays"

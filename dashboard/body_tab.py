@@ -341,14 +341,11 @@ def _empty_html() -> str:
         "<h2>Body composition</h2>"
         "<div class='panel'><p>No weigh-ins on record yet.</p>"
         "<p class='note'>This tab reads the <code>body_composition</code> table, "
-        "which is fed from the smart scale through Android Health Connect: the "
-        "Fitdays app writes each measurement to Health Connect, an on-device "
-        "exporter auto-exports the body-measurement records to a Google Sheet, "
-        "and that sheet — published to the web as CSV — is read by "
-        "<code>ingest/body_composition.py</code>. Set "
-        "<code>BODY_SHEET_CSV_URL</code> to the published-CSV link to switch the "
-        "feed on. Health Connect is an on-device store with no server-side API, "
-        "so the sheet is what makes the data reachable from CI at all.</p></div>"
+        "which is fed automatically from the Fitdays cloud by "
+        "<code>ingest/body_composition.py</code>. Configure the "
+        "<code>FITDAYS_EMAIL</code> and <code>FITDAYS_PASSWORD</code> repository "
+        "secrets to switch the feed on. <code>BODY_SHEET_CSV_URL</code> can "
+        "remain configured as the Health Connect relay fallback.</p></div>"
     )
 
 
@@ -466,6 +463,6 @@ def body_section_html(body: pd.DataFrame, today: date) -> str:
   <p class="src-note">Weight comes off the scale's load cell and is a
   measurement. Everything else on this tab comes from one bioimpedance
   reading. The scale also reports visceral fat, metabolic age, physique rating
-  and BMI, none of which appear here: Health Connect has no record type for
-  them, and each is another transform of that same impedance number, so nothing
-  independent is lost in transit.</p>"""
+  and BMI. The Fitdays integration retrieves those values, but this tab does not
+  chart them because each is another transform of that same impedance number,
+  so they do not provide an independent signal.</p>"""

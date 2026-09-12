@@ -1,0 +1,17 @@
+{
+  "name": "life-optimizer-dashboard-tools",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "fitdays:export": "node --env-file-if-exists=.env scripts/fitdays_export.mjs",
+    "fitdays:probe": "node --env-file-if-exists=.env scripts/fitdays_probe.mjs",
+    "test": "npm run test:fitdays",
+    "test:fitdays": "node --test --test-isolation=none tests-js/fitdays_client.test.mjs"
+  },
+  "dependencies": {
+    "fitdays-api": "1.0.3"
+  }
+}
