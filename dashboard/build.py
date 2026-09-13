@@ -91,7 +91,10 @@ def main() -> None:
     supabase = query.get_supabase_client()
     activities = query.fetch_activities(supabase)
     hrv_raw = query.fetch_hrv(supabase)
-    logger.info("Fetched %d activities, %d HRV reading rows", len(activities), len(hrv_raw))
+    source_status = query.fetch_ingestion_status(supabase)
+    logger.info(
+        "Fetched %d activities, %d HRV reading rows", len(activities), len(hrv_raw)
+    )
 
     load_series = metrics.build_load_series(activities)
     hrv_series = metrics.build_hrv_series(hrv_raw)
@@ -139,9 +142,16 @@ def main() -> None:
     zones_fig = zones.build_zone_comparison_figure()
     pace_fig = zones.build_pace_comparison_figure()
     html = render.render_html(
-        fig, snapshot, weekly, zones_fig, pace_fig,
-        plan=plan_view, metrics_html=metrics_html, body_html=body_html,
+        fig,
+        snapshot,
+        weekly,
+        zones_fig,
+        pace_fig,
+        plan=plan_view,
+        metrics_html=metrics_html,
+        body_html=body_html,
         strength_html=strength_html,
+        source_status=source_status,
     )
 
     _OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)

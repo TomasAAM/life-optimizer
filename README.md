@@ -66,6 +66,12 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+For development and CI checks, install the test dependencies instead:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
 ### 3. Configure environment variables
 
 ```bash
@@ -76,8 +82,14 @@ cp .env.example .env
 ### 4. Run ingestion locally
 
 ```bash
-python ingest/run.py
+python -m ingest.run
 ```
+
+The command exits with a nonzero status when Garmin authentication, wellness,
+or activity ingestion fails, or when either Garmin data stream has not completed
+successfully within `GARMIN_MAX_STALENESS_HOURS` (36 hours by default). Every
+Garmin stream resumes from its own stored watermark and re-reads two days by
+default, controlled by `GARMIN_SYNC_OVERLAP_DAYS`.
 
 ### 5. Backfill the strength history (once)
 
@@ -96,7 +108,10 @@ to start later, e.g. `python -m scripts.backfill_exercise_sets 2026-07-01`.
 
 ## GitHub Actions
 
-The workflow runs every day at 9am UTC. You can also trigger it manually from the Actions tab.
+The workflow runs every day at 9am UTC. You can also trigger it manually from the
+Actions tab. It runs the Python and Fitdays bridge tests before ingestion. A failed
+or stale critical Garmin source stops the job before the dashboard artifact is built,
+so GitHub Pages keeps serving the last successful deployment.
 
 Required secrets:
 - `GARMIN_EMAIL`
@@ -160,6 +175,27 @@ weigh-in to 10:12 and mislabel it.
 | `garmin_stress_readings` | ~200 per day | 3-min stress all day |
 | `garmin_training_readiness` | 2-4 per day | Readiness snapshots |
 | `body_composition` | 1 per weigh-in | Weight + body-fat estimate from the smart scale |
+| `ingestion_source_status` | 1 per source | Last attempt, last success, result counts, and safe reason code |
+
+## Database security
+
+Apply migrations `0010_enforce_rls_on_health_data.sql` and
+`0011_ingestion_source_status.sql` in order before running the updated pipeline.
+They enable row-level security on every health, training-plan, archive, and status
+table and revoke all table privileges from Supabase's `anon` and `authenticated`
+roles. No client policies are created, so Data API calls from those roles are
+denied by default.
+
+Ingestion and dashboard generation run only in trusted backend jobs with
+`SUPABASE_SERVICE_ROLE_KEY`. The generated Pages site is static and contains
+neither Supabase credentials nor browser-side database requests. Keep the service
+role key only in `.env` locally and in encrypted GitHub Actions secrets; never add
+it to repository files or client code.
+
+Each migration ends with a catalog check and raises an exception if RLS or the
+client-role revocations are missing. After the status-table migration is applied,
+the public dashboard shows the latest success time and outcome for each source;
+it never renders exception messages or provider responses.
 
 ### Retired: Strava (frozen archive)
 

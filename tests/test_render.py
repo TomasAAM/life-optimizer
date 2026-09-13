@@ -19,6 +19,7 @@ from dashboard.render import (
     PlanView,
     PlanWeekView,
     _plan_section,
+    _source_health_html,
     build_figure,
     render_html,
 )
@@ -191,3 +192,39 @@ def test_load_chart_rows_still_name_their_series() -> None:
     assert any("ATL:" in t for t in labelled)
     assert any("TSB:" in t for t in labelled)
     assert any("HRV:" in t for t in labelled)
+
+
+def test_source_health_keeps_success_quiet_but_visible() -> None:
+    """A fresh source gets a compact timestamp rather than an alarm banner."""
+    html = _source_health_html(
+        pd.DataFrame(
+            [
+                {
+                    "source": "garmin_activities",
+                    "status": "success",
+                    "last_success_at": "2026-09-12T09:00:00Z",
+                }
+            ]
+        )
+    )
+    assert "source-health-ok" in html
+    assert "Garmin activities" in html
+    assert "12 Sep 09:00 UTC" in html
+
+
+def test_source_health_emphasizes_degraded_optional_feed() -> None:
+    """A fallback or failed optional source must remain visible after deploy."""
+    html = _source_health_html(
+        pd.DataFrame(
+            [
+                {
+                    "source": "body_composition",
+                    "status": "degraded",
+                    "last_success_at": "2026-09-11T09:00:00Z",
+                }
+            ]
+        )
+    )
+    assert "source-health-warn" in html
+    assert "Source attention required" in html
+    assert "degraded" in html

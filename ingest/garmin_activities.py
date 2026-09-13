@@ -17,15 +17,42 @@ in :mod:`ingest.exercise_sets`.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 from garminconnect import Garmin
 from supabase import Client
 
+from ingest.status import SourceResult
+
 logger = logging.getLogger(__name__)
 
 _MULTISPORT_TYPE_KEY = "multi_sport"
+
+
+@dataclass(frozen=True)
+class GarminActivitiesResult:
+    """Garmin activity payloads together with their observable ingest outcome.
+
+    Parameters
+    ----------
+    summary : SourceResult
+        Status and row counts for the activity and exercise-summary requests.
+    activities : tuple of dict
+        Raw provider payloads reused by the exercise-set stage.
+
+    Examples
+    --------
+    >>> result = GarminActivitiesResult(
+    ...     SourceResult.from_counts("garmin_activities", 1, 1, 2), ()
+    ... )
+    >>> result.summary.status
+    'success'
+    """
+
+    summary: SourceResult
+    activities: tuple[dict[str, Any], ...]
 
 
 def _to_utc_iso(gmt_str: str | None) -> str | None:
@@ -229,7 +256,9 @@ def _replace_exercises(supabase: Client, activity_id: int, rows: list[dict]) -> 
         supabase.table("garmin_activity_exercises").insert(rows).execute()
 
 
-def ingest(supabase: Client, garmin: Garmin, since: date) -> list[dict[str, Any]]:
+def ingest(
+    supabase: Client, garmin: Garmin, since: date
+) -> GarminActivitiesResult:
     """Fetch Garmin activities since a date and upsert them into Supabase.
 
     Also writes the per-exercise breakdown of every set-bearing session, which
@@ -247,26 +276,52 @@ def ingest(supabase: Client, garmin: Garmin, since: date) -> list[dict[str, Any]
 
     Returns
     -------
-    list of dict
-        The raw activity payloads, so :mod:`ingest.exercise_sets` can pick out
-        the set-bearing sessions without fetching the same window again. Empty
-        when the fetch failed or the window holds nothing.
+    GarminActivitiesResult
+        Raw activity payloads plus the source outcome, so
+        :mod:`ingest.exercise_sets` can reuse the same response and the
+        orchestrator can distinguish an empty window from a failed fetch.
+
+    Examples
+    --------
+    Reuse an authenticated client and pass the returned activities to the
+    exercise-set stage::
+
+        result = ingest(supabase, garmin_client, since=date(2026, 9, 10))
+        exercise_sets.ingest(supabase, garmin_client, list(result.activities))
     """
     today = date.today()
     try:
         activities = garmin.get_activities_by_date(since.isoformat(), today.isoformat())
     except Exception as exc:  # noqa: BLE001
         logger.error("Could not fetch Garmin activities: %s", exc)
-        return []
+        return GarminActivitiesResult(
+            summary=SourceResult(
+                source="garmin_activities",
+                status="failed",
+                attempted=1,
+                detail_code="garmin_activity_fetch_failed",
+            ),
+            activities=(),
+        )
 
     if not activities:
         logger.info("No Garmin activities found from %s to %s", since, today)
-        return []
+        return GarminActivitiesResult(
+            summary=SourceResult.from_counts(
+                source="garmin_activities",
+                attempted=1,
+                succeeded=1,
+                rows_written=0,
+            ),
+            activities=(),
+        )
 
     rows = [_parse_activity(a) for a in activities if a.get("activityId") is not None]
 
     if rows:
-        supabase.table("garmin_activities").upsert(rows, on_conflict="activity_id").execute()
+        supabase.table("garmin_activities").upsert(
+            rows, on_conflict="activity_id"
+        ).execute()
 
     multisport = sum(1 for r in rows if r["is_multisport"])
     logger.info(
@@ -279,6 +334,7 @@ def ingest(supabase: Client, garmin: Garmin, since: date) -> list[dict[str, Any]
     # onto them, so a session logged inside this window has to exist first.
     exercises = 0
     sessions = 0
+    exercise_failures = 0
     for activity in activities:
         activity_id = activity.get("activityId")
         if activity_id is None or not has_exercise_sets(activity):
@@ -290,7 +346,10 @@ def ingest(supabase: Client, garmin: Garmin, since: date) -> list[dict[str, Any]
         try:
             _replace_exercises(supabase, activity_id, parsed)
         except Exception as exc:  # noqa: BLE001
-            logger.error("Could not store exercises for activity %s: %s", activity_id, exc)
+            logger.error(
+                "Could not store exercises for activity %s: %s", activity_id, exc
+            )
+            exercise_failures += 1
             continue
         sessions += 1
         exercises += len(parsed)
@@ -300,4 +359,17 @@ def ingest(supabase: Client, garmin: Garmin, since: date) -> list[dict[str, Any]
         exercises,
         sessions,
     )
-    return activities
+    exercise_attempts = sessions + exercise_failures
+    attempted = 1 + exercise_attempts
+    succeeded = 1 + sessions
+    detail_code = "partial_exercise_summary_failure" if exercise_failures else None
+    return GarminActivitiesResult(
+        summary=SourceResult.from_counts(
+            source="garmin_activities",
+            attempted=attempted,
+            succeeded=succeeded,
+            rows_written=len(rows) + exercises,
+            detail_code=detail_code,
+        ),
+        activities=tuple(activities),
+    )

@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 from garminconnect import Garmin
 from supabase import Client
+
+from ingest.status import SourceResult
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +121,9 @@ def _date_range(since: date, until: date) -> list[date]:
     return [since + timedelta(days=i) for i in range(days)]
 
 
-def _ingest_daily_wellness(garmin: Garmin, supabase: Client, target_date: date) -> None:
+def _ingest_daily_wellness(
+    garmin: Garmin, supabase: Client, target_date: date
+) -> int | None:
     """Fetch and upsert daily wellness summary for one date.
 
     Parameters
@@ -135,7 +140,7 @@ def _ingest_daily_wellness(garmin: Garmin, supabase: Client, target_date: date) 
         summary = garmin.get_user_summary(date_str)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not fetch daily summary for %s: %s", date_str, exc)
-        return
+        return None
 
     row = {
         "date": date_str,
@@ -157,9 +162,10 @@ def _ingest_daily_wellness(garmin: Garmin, supabase: Client, target_date: date) 
     }
     supabase.table("garmin_daily_wellness").upsert(row, on_conflict="date").execute()
     logger.info("Upserted daily wellness for %s", date_str)
+    return 1
 
 
-def _ingest_hrv(garmin: Garmin, supabase: Client, target_date: date) -> None:
+def _ingest_hrv(garmin: Garmin, supabase: Client, target_date: date) -> int | None:
     """Fetch and upsert HRV readings for one date.
 
     Parameters
@@ -176,10 +182,10 @@ def _ingest_hrv(garmin: Garmin, supabase: Client, target_date: date) -> None:
         data = garmin.get_hrv_data(date_str)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not fetch HRV for %s: %s", date_str, exc)
-        return
+        return None
 
     if not data or "hrvSummary" not in data:
-        return
+        return 0
 
     summary = data["hrvSummary"]
     readings = data.get("hrvReadings", [])
@@ -202,9 +208,12 @@ def _ingest_hrv(garmin: Garmin, supabase: Client, target_date: date) -> None:
     if rows:
         supabase.table("garmin_hrv_readings").upsert(rows, on_conflict="date,ts").execute()
         logger.info("Upserted %d HRV readings for %s", len(rows), date_str)
+    return len(rows)
 
 
-def _ingest_heart_rate(garmin: Garmin, supabase: Client, target_date: date) -> None:
+def _ingest_heart_rate(
+    garmin: Garmin, supabase: Client, target_date: date
+) -> int | None:
     """Fetch and upsert heart rate readings for one date.
 
     Parameters
@@ -221,7 +230,7 @@ def _ingest_heart_rate(garmin: Garmin, supabase: Client, target_date: date) -> N
         data = garmin.get_heart_rates(date_str)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not fetch heart rates for %s: %s", date_str, exc)
-        return
+        return None
 
     values = data.get("heartRateValues") or []
     rows = [
@@ -233,9 +242,10 @@ def _ingest_heart_rate(garmin: Garmin, supabase: Client, target_date: date) -> N
     if rows:
         supabase.table("garmin_heart_rate_readings").upsert(rows, on_conflict="date,ts").execute()
         logger.info("Upserted %d HR readings for %s", len(rows), date_str)
+    return len(rows)
 
 
-def _ingest_stress(garmin: Garmin, supabase: Client, target_date: date) -> None:
+def _ingest_stress(garmin: Garmin, supabase: Client, target_date: date) -> int | None:
     """Fetch and upsert stress readings for one date.
 
     Parameters
@@ -252,7 +262,7 @@ def _ingest_stress(garmin: Garmin, supabase: Client, target_date: date) -> None:
         data = garmin.get_stress_data(date_str)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not fetch stress for %s: %s", date_str, exc)
-        return
+        return None
 
     values = data.get("stressValuesArray") or []
     rows = [
@@ -263,9 +273,12 @@ def _ingest_stress(garmin: Garmin, supabase: Client, target_date: date) -> None:
     if rows:
         supabase.table("garmin_stress_readings").upsert(rows, on_conflict="date,ts").execute()
         logger.info("Upserted %d stress readings for %s", len(rows), date_str)
+    return len(rows)
 
 
-def _ingest_training_readiness(garmin: Garmin, supabase: Client, target_date: date) -> None:
+def _ingest_training_readiness(
+    garmin: Garmin, supabase: Client, target_date: date
+) -> int | None:
     """Fetch and upsert training readiness snapshots for one date.
 
     Parameters
@@ -282,10 +295,10 @@ def _ingest_training_readiness(garmin: Garmin, supabase: Client, target_date: da
         data = garmin.get_training_readiness(date_str)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not fetch training readiness for %s: %s", date_str, exc)
-        return
+        return None
 
     if not data:
-        return
+        return 0
 
     snapshots = data if isinstance(data, list) else [data]
     rows = [
@@ -312,34 +325,87 @@ def _ingest_training_readiness(garmin: Garmin, supabase: Client, target_date: da
     if rows:
         supabase.table("garmin_training_readiness").upsert(rows, on_conflict="date,ts").execute()
         logger.info("Upserted %d readiness snapshots for %s", len(rows), date_str)
+    return len(rows)
 
 
-def ingest(supabase: Client, since: date, client: Garmin | None = None) -> None:
+def ingest(
+    supabase: Client,
+    since: date | Mapping[str, date],
+    client: Garmin | None = None,
+) -> SourceResult:
     """Fetch new Garmin data and upsert into Supabase.
 
     Parameters
     ----------
     supabase : Client
         Authenticated Supabase client.
-    since : date
-        Fetch data from this date onwards.
+    since : date or mapping of str to date
+        Fetch data from this date onwards. A mapping supplies independent
+        watermarks for ``wellness``, ``hrv``, ``heart_rate``, ``stress``, and
+        ``readiness`` so a successful endpoint cannot advance a failed one.
     client : Garmin, optional
         An already-authenticated Garmin client to reuse. If omitted, a new
         client is created via :func:`get_client`. Passing a shared client
         avoids a second SSO login when wellness and activity ingestion run
         in the same pipeline.
+    Returns
+    -------
+    SourceResult
+        Aggregate status across all endpoint-day requests.
+
+    Examples
+    --------
+    Supply a separate restart date for each Garmin endpoint::
+
+        result = ingest(supabase, since=watermarks, client=garmin_client)
+        assert result.source == "garmin_wellness"
     """
     garmin = client or get_client()
     today = date.today()
-    dates = _date_range(since, today)
+    endpoints = (
+        ("wellness", _ingest_daily_wellness),
+        ("hrv", _ingest_hrv),
+        ("heart_rate", _ingest_heart_rate),
+        ("stress", _ingest_stress),
+        ("readiness", _ingest_training_readiness),
+    )
+    attempted = 0
+    succeeded = 0
+    rows_written = 0
 
-    logger.info("Ingesting Garmin data for %d days (%s to %s)", len(dates), since, today)
+    for source, ingest_one in endpoints:
+        endpoint_since = (
+            since.get(source, today) if isinstance(since, Mapping) else since
+        )
+        dates = _date_range(endpoint_since, today)
+        logger.info(
+            "Ingesting Garmin %s for %d days (%s to %s)",
+            source,
+            len(dates),
+            endpoint_since,
+            today,
+        )
+        for target_date in dates:
+            attempted += 1
+            written = ingest_one(garmin, supabase, target_date)
+            if written is None:
+                continue
+            succeeded += 1
+            rows_written += written
 
-    for target_date in dates:
-        _ingest_daily_wellness(garmin, supabase, target_date)
-        _ingest_hrv(garmin, supabase, target_date)
-        _ingest_heart_rate(garmin, supabase, target_date)
-        _ingest_stress(garmin, supabase, target_date)
-        _ingest_training_readiness(garmin, supabase, target_date)
-
-    logger.info("Garmin ingestion complete")
+    detail_code = "partial_garmin_endpoint_failure" if succeeded < attempted else None
+    result = SourceResult.from_counts(
+        source="garmin_wellness",
+        attempted=attempted,
+        succeeded=succeeded,
+        rows_written=rows_written,
+        detail_code=detail_code,
+    )
+    logger.info(
+        "Garmin wellness ingestion %s: %d/%d requests, %d rows",
+        result.status,
+        succeeded,
+        attempted,
+        rows_written,
+    )
+    return result

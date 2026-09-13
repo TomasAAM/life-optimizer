@@ -1,15 +1,12 @@
-name: Weekly Ingestion & Dashboard
+name: Daily Ingestion & Dashboard
 
 on:
   schedule:
     - cron: '0 9 * * *'  # Every day at 9am UTC
   workflow_dispatch:      # Allow manual trigger
 
-# Allow the deploy job to publish to GitHub Pages.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # Avoid overlapping deployments.
 concurrency:
@@ -38,7 +35,13 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
+
+      - name: Run Python tests
+        run: python -m pytest -q
+
+      - name: Run Fitdays bridge tests
+        run: npm test
 
       - name: Run ingestion
         env:
@@ -68,6 +71,9 @@ jobs:
   deploy:
     needs: ingest
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

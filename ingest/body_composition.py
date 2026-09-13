@@ -32,6 +32,8 @@ import pandas as pd
 import requests
 from supabase import Client
 
+from ingest.status import SourceResult
+
 logger = logging.getLogger(__name__)
 
 _SHEET_URL_ENV = "BODY_SHEET_CSV_URL"
@@ -407,7 +409,7 @@ def _upsert_rows(supabase: Client, rows: list[dict[str, Any]], source: str) -> N
     )
 
 
-def ingest(supabase: Client, sheet_url: str | None = None) -> None:
+def ingest(supabase: Client, sheet_url: str | None = None) -> SourceResult:
     """Fetch Fitdays history and upsert every available weigh-in.
 
     Fitdays is preferred when both credentials are configured. If it is
@@ -421,14 +423,38 @@ def ingest(supabase: Client, sheet_url: str | None = None) -> None:
         Authenticated Supabase client.
     sheet_url : str or None, optional
         Published-CSV fallback URL. Defaults to ``BODY_SHEET_CSV_URL``.
+
+    Returns
+    -------
+    SourceResult
+        Status of the preferred source and any fallback attempt.
+
+    Examples
+    --------
+    Run the configured Fitdays source and optional sheet fallback::
+
+        result = ingest(supabase)
+        print(result.status)
     """
-    if _fitdays_credentials_configured():
+    fitdays_expected = bool(
+        os.environ.get(_FITDAYS_EMAIL_ENV, "").strip()
+        or os.environ.get(_FITDAYS_PASSWORD_ENV, "").strip()
+    )
+    fitdays_configured = _fitdays_credentials_configured()
+    fitdays_failed = fitdays_expected and not fitdays_configured
+    if fitdays_configured:
         try:
             fitdays_rows = _fetch_fitdays_rows()
             if fitdays_rows:
                 _upsert_rows(supabase, fitdays_rows, "Fitdays cloud")
-                return
+                return SourceResult.from_counts(
+                    source="body_composition",
+                    attempted=1,
+                    succeeded=1,
+                    rows_written=len(fitdays_rows),
+                )
             logger.warning("Fitdays returned no active measurements; trying fallback")
+            fitdays_failed = True
         except (
             FileNotFoundError,
             json.JSONDecodeError,
@@ -437,6 +463,7 @@ def ingest(supabase: Client, sheet_url: str | None = None) -> None:
             ValueError,
         ) as exc:
             logger.error("Fitdays ingestion failed; trying fallback: %s", exc)
+            fitdays_failed = True
 
     url = sheet_url or os.environ.get(_SHEET_URL_ENV)
     if not url:
@@ -445,23 +472,64 @@ def ingest(supabase: Client, sheet_url: str | None = None) -> None:
             "or %s",
             _SHEET_URL_ENV,
         )
-        return
+        if fitdays_failed:
+            return SourceResult(
+                source="body_composition",
+                status="failed",
+                attempted=1,
+                detail_code="fitdays_failed_no_fallback",
+            )
+        return SourceResult(
+            source="body_composition",
+            status="skipped",
+            detail_code="body_source_not_configured",
+        )
 
     try:
         response = requests.get(url, timeout=_REQUEST_TIMEOUT_S)
         response.raise_for_status()
     except requests.RequestException as exc:
         logger.error("Could not fetch the body-composition sheet: %s", exc)
-        return
+        return SourceResult(
+            source="body_composition",
+            status="failed",
+            attempted=2 if fitdays_expected else 1,
+            detail_code="body_sheet_fetch_failed",
+        )
 
     try:
         rows = parse_sheet(response.text)
     except (ValueError, pd.errors.ParserError) as exc:
         logger.error("Could not parse the body-composition sheet: %s", exc)
-        return
+        return SourceResult(
+            source="body_composition",
+            status="failed",
+            attempted=2 if fitdays_expected else 1,
+            detail_code="body_sheet_parse_failed",
+        )
 
     if not rows:
         logger.info("No body-composition rows found in the relay sheet")
-        return
+        return SourceResult(
+            source="body_composition",
+            status="failed",
+            attempted=2 if fitdays_expected else 1,
+            detail_code="body_sheet_empty",
+        )
 
     _upsert_rows(supabase, rows, "Health Connect relay sheet")
+    if fitdays_failed:
+        return SourceResult(
+            source="body_composition",
+            status="degraded",
+            attempted=2,
+            succeeded=1,
+            rows_written=len(rows),
+            detail_code="fitdays_failed_fallback_succeeded",
+        )
+    return SourceResult.from_counts(
+        source="body_composition",
+        attempted=1,
+        succeeded=1,
+        rows_written=len(rows),
+    )

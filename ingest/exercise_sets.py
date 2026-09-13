@@ -29,6 +29,7 @@ from garminconnect import Garmin
 from supabase import Client
 
 from ingest.garmin_activities import grams_to_kg, has_exercise_sets
+from ingest.status import SourceResult
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,7 @@ def _replace_sets(supabase: Client, activity_id: int, rows: list[dict]) -> None:
 
 def ingest(
     supabase: Client, garmin: Garmin, activities: list[dict[str, Any]]
-) -> None:
+) -> SourceResult:
     """Fetch and store the per-set detail of every set-bearing session.
 
     Takes the activity payloads already fetched by
@@ -189,18 +190,35 @@ def ingest(
         Authenticated Garmin client.
     activities : list of dict
         Raw activity payloads for the sync window.
+
+    Returns
+    -------
+    SourceResult
+        Status across the set-bearing sessions attempted.
+
+    Examples
+    --------
+    Reuse activity payloads already fetched by the activity stage::
+
+        result = ingest(supabase, garmin_client, activities)
     """
     targets = [
-        a for a in activities
+        a
+        for a in activities
         if a.get("activityId") is not None and has_exercise_sets(a)
     ]
     if not targets:
         logger.info("No set-bearing sessions in the window")
-        return
+        return SourceResult(
+            source="garmin_exercise_sets",
+            status="skipped",
+            detail_code="no_set_bearing_sessions",
+        )
 
     sessions = 0
     stored = 0
     certain = 0
+    failures = 0
     for activity in targets:
         activity_id = activity["activityId"]
         try:
@@ -208,6 +226,7 @@ def ingest(
         except Exception as exc:  # noqa: BLE001
             # One unreachable session must not cost the rest of the window.
             logger.error("Could not fetch sets for activity %s: %s", activity_id, exc)
+            failures += 1
             continue
 
         rows = parse_sets(activity_id, payload)
@@ -217,13 +236,16 @@ def ingest(
             _replace_sets(supabase, activity_id, rows)
         except Exception as exc:  # noqa: BLE001
             logger.error("Could not store sets for activity %s: %s", activity_id, exc)
+            failures += 1
             continue
 
         sessions += 1
         stored += len(rows)
         certain += sum(
-            1 for r in rows
-            if r["set_type"] == "ACTIVE" and r["probability_pct"] == _CERTAIN_PROBABILITY
+            1
+            for r in rows
+            if r["set_type"] == "ACTIVE"
+            and r["probability_pct"] == _CERTAIN_PROBABILITY
         )
 
     logger.info(
@@ -231,4 +253,11 @@ def ingest(
         stored,
         sessions,
         certain,
+    )
+    return SourceResult.from_counts(
+        source="garmin_exercise_sets",
+        attempted=len(targets),
+        succeeded=sessions,
+        rows_written=stored,
+        detail_code="partial_exercise_set_failure" if failures else None,
     )

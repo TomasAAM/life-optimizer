@@ -122,6 +122,22 @@ h1 {{
   padding-bottom: 4px;
 }}
 
+.source-health {{
+  margin: -10px 0 22px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--muted);
+  background: var(--surface);
+}}
+.source-health-warn {{
+  color: var(--warn-fg);
+  border-color: var(--warn-fg);
+  background: var(--warn-bg);
+}}
+
 /* ---------- tabs ---------- */
 .tabs {{
   display: flex;

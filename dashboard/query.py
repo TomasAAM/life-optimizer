@@ -118,6 +118,35 @@ def fetch_body_composition(supabase: Client) -> pd.DataFrame:
     )
 
 
+def fetch_ingestion_status(supabase: Client) -> pd.DataFrame:
+    """Fetch the latest observable outcome for every ingestion stage.
+
+    Parameters
+    ----------
+    supabase : supabase.Client
+        Authenticated backend client.
+
+    Returns
+    -------
+    pandas.DataFrame
+        One row per source with status, attempt/success timestamps, counts, and
+        a fixed non-sensitive detail code.
+
+    Examples
+    --------
+    Fetch the rows during a trusted backend dashboard build::
+
+        statuses = fetch_ingestion_status(supabase)
+    """
+    return _fetch_all(
+        supabase,
+        "ingestion_source_status",
+        "source,status,last_attempt_at,last_success_at,attempted,succeeded,failed,"
+        "rows_written,detail_code",
+        "source",
+    )
+
+
 def fetch_activity_exercises(supabase: Client) -> pd.DataFrame:
     """Fetch the per-exercise breakdown of every set-bearing session.
 

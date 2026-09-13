@@ -227,8 +227,10 @@ class TestIngestGuards:
                 calls.append(name)
                 raise AssertionError("ingest must not touch Supabase with no URL")
 
-        bc.ingest(_Supabase())
+        result = bc.ingest(_Supabase())
         assert calls == []
+        assert result.status == "skipped"
+        assert result.detail_code == "body_source_not_configured"
 
     def test_fitdays_is_preferred_when_credentials_are_set(
         self, monkeypatch
@@ -256,9 +258,20 @@ class TestIngestGuards:
         )
         supabase = _Supabase()
 
-        bc.ingest(supabase, sheet_url="https://example.com/fallback.csv")
+        result = bc.ingest(supabase, sheet_url="https://example.com/fallback.csv")
 
         assert supabase.rows == expected
+        assert result.status == "success"
+
+    def test_incomplete_fitdays_credentials_are_visible(self, monkeypatch) -> None:
+        """A half-configured preferred source is a failure, not a quiet skip."""
+        monkeypatch.setenv(bc._FITDAYS_EMAIL_ENV, "person@example.com")
+        monkeypatch.delenv(bc._FITDAYS_PASSWORD_ENV, raising=False)
+
+        result = bc.ingest(_Supabase())
+
+        assert result.status == "failed"
+        assert result.detail_code == "fitdays_failed_no_fallback"
 
     def test_sheet_is_used_when_fitdays_fails(self, monkeypatch) -> None:
         monkeypatch.setenv(bc._FITDAYS_EMAIL_ENV, "person@example.com")
@@ -279,7 +292,9 @@ class TestIngestGuards:
         monkeypatch.setattr(bc.requests, "get", lambda *args, **kwargs: _Response())
         supabase = _Supabase()
 
-        bc.ingest(supabase, sheet_url="https://example.com/fallback.csv")
+        result = bc.ingest(supabase, sheet_url="https://example.com/fallback.csv")
 
         assert len(supabase.rows) == 1
         assert supabase.rows[0]["source"] == "fitdays"
+        assert result.status == "degraded"
+        assert result.detail_code == "fitdays_failed_fallback_succeeded"
