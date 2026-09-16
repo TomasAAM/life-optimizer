@@ -339,8 +339,9 @@ GUARDRAILS (apply to EVERY week of the block):
     (sub-line: HR/pace/effort or a note), load (kg for station/strength, else null). List a repeated
     block (e.g. 3x threshold) as its individual work + rest segments, all phase "main". For a
     compromised-running sim, alternate run segments and station segments (with load), each round.
-    Leave `steps` empty ([]) only for a trivial single-effort session; always also fill the one-line
-    `prescription` as a fallback.
+    Every workout, including a trivial single-effort session, MUST have at least one `steps` entry
+    so the dashboard can render its structured visual card. Only a full rest day may use `steps: []`.
+    Always also fill the one-line `prescription` as a legacy fallback.
   - DETAIL & CONSISTENCY: be explicit and unambiguous. State the exact number of rounds/sets/reps.
     `distance_m` and `duration_min` MUST equal the sum across the steps.
   - LOADS: give a concrete weight for every strength/station movement — station work at the Hyrox

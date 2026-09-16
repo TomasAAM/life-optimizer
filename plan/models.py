@@ -9,9 +9,9 @@ Keeping the shape flat (no free-form dicts) makes validation reliable.
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal, Optional, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 DayName = Literal[
     "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
@@ -73,13 +73,13 @@ class PlannedSession(BaseModel):
     )
     prescription: str = Field(
         description="Full human-readable detail: structure, intervals, paces/HR, "
-        "stations, reps, loads, recoveries. Used as a fallback when steps is empty."
+        "stations, reps, loads, recoveries. Retained as a legacy-rendering fallback."
     )
     steps: list[Step] = Field(
         default_factory=list,
         description="The session broken into labelled blocks (warm-up / main set / "
-        "cool-down, or rounds). Drives the structured card; leave empty for a "
-        "single-block session like an easy run or rest.",
+        "cool-down, or rounds). Drives the structured card; only rest days may "
+        "leave this empty.",
     )
     purpose: str = Field(description="One sentence on the training purpose.")
     why: str = Field(
@@ -93,6 +93,24 @@ class PlannedSession(BaseModel):
         description="Which Hyrox demand this targets (e.g. 'compromised running', "
         "'sled', 'wall balls'), or null.",
     )
+
+    @model_validator(mode="after")
+    def require_visual_steps_for_workouts(self) -> Self:
+        """Reject workouts that would degrade to the plain-text fallback.
+
+        Returns
+        -------
+        PlannedSession
+            The validated session.
+
+        Raises
+        ------
+        ValueError
+            If a non-rest session does not provide structured visual steps.
+        """
+        if self.session_type != "rest" and not self.steps:
+            raise ValueError("Non-rest sessions require at least one structured step.")
+        return self
 
 
 class PlannedWeek(BaseModel):
