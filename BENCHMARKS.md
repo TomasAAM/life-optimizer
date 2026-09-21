@@ -1,11 +1,12 @@
 # Benchmarks — hybrid endurance (Hyrox + 21k)
 
-Progress-tracking battery for the macrocycle toward **Hyrox #2 (2026-11-14)** and standing 21k
+Progress-tracking battery for the macrocycle toward **Hyrox #2 (2026-12-13)**, with the
+standing 21k as aerobic support.
 readiness. Benchmarks close the loop the plan can't: they verify the prescription is actually moving
 fitness, so the "err high / auto-regulate by feel" approach stays honest against a measured trend.
 Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limiter or a goal.
 
-**Phase 1 (now):** log results in this file. **Phase 2 (Nov build):** promote to a Supabase
+**Phase 1 (now):** log results in this file. **Phase 2 (December build):** promote to a Supabase
 `benchmark_results` table + a dashboard trend panel against targets.
 
 ## How to test (so the numbers mean something)
@@ -29,7 +30,7 @@ Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limi
 | Benchmark | Frequency | Preferred window |
 |---|---|---|
 | 5k time trial | every 4–6 wk | end of a build block, post-deload |
-| Threshold field test (30-min TT) | every ~6–8 wk | fresh, block boundary |
+| Threshold field test (30-min TT) | only with a flat verified route or calibrated treadmill | fresh, block boundary |
 | Long-run HR/pace decoupling | continuous (each long run) | review monthly |
 | Garmin VO2max estimate | continuous | directional only |
 | Est-1RM squat + trap-bar DL | every ~8 wk | fresh strength day |
@@ -39,7 +40,7 @@ Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limi
 | Hyrox station battery (Pro load) | every ~8 wk | controlled, fresh |
 | Compromised-run pace | continuous (read from each sim) | — |
 | Bodyweight | weekly | fasted AM |
-| **Actual Hyrox race** | the event itself | **2026-11-14 = true benchmark** |
+| **Actual Hyrox race** | the event itself | **2026-12-13 = true benchmark** |
 
 ## The battery
 
@@ -83,7 +84,7 @@ Baseline these from a **controlled self-test**, not from Aug 2 (different statio
 | **Sled push / pull** | Timed over fixed distance at Pro load (push 202 kg, pull 153 kg). | — | establish | Race-specific strength-endurance at competition load. |
 | **Wall balls** | Max unbroken to 3.0 m, 9 kg. | — | establish | Shoulder/leg muscular endurance. |
 | **Compromised-run pace** | Pace held on the sim's 1k runs at a set HR. | ~4:50–4:55/km @ 150–160 bpm (current sim target) | faster @ same HR | The integrated "is my Hyrox fitness improving" signal. |
-| **Hyrox station battery / half-sim** | Standardized self-test, Pro load, controlled. | — (Nov build wk 2–3) | establish | The real, repeatable Hyrox baseline that Nov 14 is measured against. |
+| **Hyrox station battery / half-sim** | Standardized self-test, Pro load, controlled. | — (late Oct / early Nov) | establish | The real, repeatable Hyrox baseline that December 13 is measured against. |
 
 ## Baseline plan
 
@@ -95,9 +96,10 @@ Baseline these from a **controlled self-test**, not from Aug 2 (different statio
   2×15 kg · tyre flip-over 80 m · obstacle course (final stage). High-rep, lighter-load, no sleds/ski/row.
 - **Post-race week (Aug 3–9):** free metrics only while recovering — decoupling from the last long run,
   Garmin VO2max, bodyweight, CMJ if fresh. No hard TTs.
-- **Nov build, wk 2–3:** full-battery baseline once recovered and built — 5k TT, **30-min threshold TT**
-  (LTHR + threshold pace), strength est-1RMs, the Hyrox station battery.
-- **2026-11-14:** actual Hyrox — the true competition benchmark.
+- **Late Oct / early Nov:** full-battery baseline once recovered and built — strength est-1RMs,
+  the Hyrox station battery, and a race or calibrated treadmill effort only if a new running
+  anchor is needed.
+- **2026-12-13:** actual Hyrox — the true competition benchmark.
 
 ## Results log
 
@@ -112,5 +114,6 @@ Append-only. One row per measurement.
 | 2026-08-30 | Endurance | 10 km | 39:35 | min:s | Outdoor, 07:30. 10.565 km in 41:49 = 3:57.6/km, avg HR 183, max 194, 84 m gain, cadence 174. 2.4 km warm-up + 5.3 km cool-down. Garmin 24171757728 | Not tagged as a race but run as one. The strongest performance anchor on file — supersedes the self-reported 5k. |
 | 2026-09-05 | Hyrox | Full station sim | 48:48 | min:s | Peñalolén, 32 laps, 5.98 km, max HR 194, TE 4.8 (VO2max), anaerobic TE 3.5, load 431. Garmin 24251406115 | Per-station splits not broken out. Log them next time — the sim is only a benchmark if the station times are recoverable. |
 | 2026-09-06 | Endurance | LT2 (re-anchor) | 4:16 @ 175 | /km @ bpm | Derived, not tested. From the 08-30 10 km + the surviving HR half of the 08-11 TT | Fitting the measured pace–HR curve (6:02→133, 5:05→154, 3:58→183) and extrapolating to 175 bpm gives 4:18 from either end; Riegel on the 10 km gives 4:03. Took 4:16. `training_zones` reseeded. **Confirm with the outdoor 30-min TT in the week of 09-14** — this is an inference until then. |
+| 2026-09-13 | Endurance | Official 10 km race | 40:40 | min:s | Las Condes Carrera; Garmin 9.994 km, 69 m gain, avg HR 181, max HR 195 | Replaces the scheduled outdoor 30-min TT as the current performance benchmark. Rolling course and no kilometre splits: it supports the working 4:16/km threshold prescription but does not precisely re-anchor LTHR. |
 
 _Add new rows as you test. Keep dates ISO (YYYY-MM-DD)._

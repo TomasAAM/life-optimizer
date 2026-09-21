@@ -124,7 +124,7 @@ class PlannedWeek(BaseModel):
     methodology: str = Field(
         description="3-5 sentences naming the training PRINCIPLES this week applies "
         "(polarized mostly-easy volume, threshold work to raise LT2, heavy/explosive "
-        "strength for economy kept off hard-run days, gradual load progression, freshen "
+        "strength sequenced to protect key running, gradual load progression, freshen "
         "before a race) and why those principles fit a hybrid endurance athlete. "
         "Reference principles only — do NOT invent citations; the sources are curated "
         "separately.",

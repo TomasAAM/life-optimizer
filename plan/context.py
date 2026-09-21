@@ -238,7 +238,7 @@ def render_brief(bundle: BlockContext) -> str:
         "freshen or post-race recovery. The athlete self-regulates recovery — do not cite "
         "Garmin readiness/HRV/CTL.",
         "methodology": "3-5 sentences naming the principles applied (polarized easy volume, "
-        "threshold to raise LT2, heavy/explosive strength for economy kept off hard-run days, "
+        "threshold to raise LT2, heavy/explosive strength sequenced to protect key running, "
         "gradual load, freshen before a race). Principles only — no invented citations.",
         "sessions": [
             {
@@ -274,9 +274,9 @@ def render_brief(bundle: BlockContext) -> str:
 
     return f"""You are an expert coach for a HYBRID endurance athlete. Write a threshold-centric, \
 lactate-anchored {n_weeks}-WEEK TRAINING BLOCK grounded in hybrid/concurrent-training science (the deep \
-evidence base; Hyrox-specific research is still thin). Optimize EQUALLY for HYROX (compromised running + \
-strength-endurance across 8 stations) and {cfg.secondary_goal} running; the shared lever is raising LT2 \
-and aerobic base. Apply the principles: mostly-easy polarized volume, sparing high-quality threshold \
+evidence base; Hyrox-specific research is still thin). Optimize for HYROX race performance while also \
+developing {cfg.secondary_goal} running; running quality is the largest shared performance lever, while \
+complete strength and station work must keep progressing. Apply the principles: mostly-easy polarized volume, sparing high-quality threshold \
 work, heavy/explosive strength for running economy, and gradual load progression. Anchor every run to \
 the measured zones below — never generic %HRmax. Protect the hard, protect the easy, kill the grey zone.
 
@@ -295,13 +295,15 @@ LACTATE-ANCHORED ZONES (shared across the block):
 AVAILABILITY & STRUCTURE (every week):
   {cfg.sessions_per_week} sessions/week: ~{cfg.runs_per_week} runs + ~{cfg.strength_per_week} \
 strength/functional; the rest are rest days.
-  Default rest day(s): {", ".join(cfg.rest_days)}. Long/endurance run on {cfg.long_run_day}.
+  Default rest day(s): {", ".join(cfg.rest_days)}. Long/endurance run on {cfg.long_run_day}, except
+  Sunday in a simulation week so Saturday can absorb Friday's compromised session.
   Gym access: {cfg.gym_access} — program heavy barbell and explosive/plyometric work, not only \
 bodyweight circuits.
   EQUIPMENT: FREE WEIGHTS ONLY — barbell, dumbbell, kettlebell, bodyweight, bands. Do NOT prescribe \
 cable or selectorized machines (lat pulldown, pec deck, leg press, cable rows). The Hyrox stations \
 (ski erg, rower, sleds) are the only permitted exception, since they are the event itself.
-  Gym frequency: ONE gym visit available EVERY day, so a gym session can be placed on any day.
+  Gym frequency: ONE gym visit available EVERY day, but GYM ACCESS IS MORNING-ONLY. Never prescribe
+  an afternoon/evening gym session. A run can happen later at home or outdoors.
   A gym trip must be WORTH THE TRIP: if a day includes a gym session, give it a full session \
 (~45-60 min, roughly 5-7 movements), not a 20-minute accessory add-on.
   Home treadmill: running is always available at home independent of the gym visit. The natural
@@ -318,19 +320,22 @@ LOADS ({HYROX_DIVISION}) — prescribe station work AT these competition standar
 
 GUARDRAILS (apply to EVERY week of the block):
   - Each week has exactly 7 entries, one per weekday Monday..Sunday (use session_type "rest" for rest days).
-  - Keep "hard" days separated by >= 1 easy or rest day.
-  - Weight the two goals EQUALLY: balance pure running quality (threshold, long run, economy) with
-    Hyrox-specific work (compromised running, stations) roughly 50/50 across each week.
+  - Keep hard RUNNING / METABOLIC sessions separated by >= 1 non-hard day. A controlled heavy-strength
+    session may follow threshold by ~24 h when it is morning-only, submaximal, and athlete feedback supports it.
+  - Give HYROX race performance priority while preserving threshold, long-run, and economy development
+    that transfers to both HYROX and {cfg.secondary_goal} running.
   - Use the full gym: at least one strength session per week includes heavy compound or explosive
     lifts (squat, trap-bar deadlift, hip thrust, jumps) for running economy and sled power.
-  - Keep explosive/plyometric strength OFF hard-run days (same-session concurrent training blunts
-    power) — schedule it on an easy-run or standalone strength day.
+  - Put the lower-body explosive primer and full lower-strength session on Wednesday morning, about
+    24 h after Tuesday threshold. Alternate squat and hinge emphasis; use 5-6 movements over 45-60 min.
+    Follow with an easy run later Wednesday. Tuesday is threshold ONLY; never add a gym session.
   - Hit the weekly-km target; easy runs carry the km (strength/stations don't count toward km). Judge
     strength by load + RIR, not HR, and prescribe concrete kg from the loads above.
   - Double sessions are welcome, but a double day = exactly one GYM session + one NO-GYM session (run or
     bodyweight); never schedule two gym sessions in a day.
-  - Never place two low-intensity-FEEL days back to back (e.g. a heavy low-rep lift immediately before an
-    easy run) — pair heavy strength with a hard run to make a clean hard day, keep the easy days cleanly easy.
+  - In a technical/long-finish week: Thursday is low-RPE station technique, Saturday is the second
+    quality exposure, and Sunday is active recovery. In a simulation week: Thursday is easy, Friday is
+    the hard compromised simulation, Saturday is active recovery, and Sunday is an easy long run.
   - In build/peak weeks include >= 1 compromised-running session and >= 1 station/strength-endurance session.
   - Respect the per-week RACE WEEK and POST-RACE notes above where present (freshen the final days before a
     race; open a post-race week with the stated recovery day(s), then train through).

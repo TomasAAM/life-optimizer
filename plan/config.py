@@ -174,29 +174,30 @@ STRENGTH_TEMPLATE = (
 )
 
 
-# Race calendar: two Hyrox races (2026-08-02, then 2026-11-14) plus a standing
-# 21k. 6 training days/week (4 runs + 2 strength), Sunday rest, long run Saturday.
+# Race calendar: two Hyrox races (2026-08-02, then 2026-12-13) plus a standing
+# 21k. Seven movement days/week (4 runs + 2 strength + active recovery), long run
+# Saturday. Sunday is deliberately active recovery rather than a full rest day.
 # Blocks span 4 weeks; a race week freshens over its final 3 days; the week after
 # a race opens with a single recovery day, then trains through. Add/edit races to
 # re-point the whole engine — no other change needed.
 DEFAULT_CONFIG = PlanConfig(
     races=(
         Race(name="hyrox", date=date(2026, 8, 2)),
-        Race(name="hyrox", date=date(2026, 11, 14)),
+        Race(name="hyrox", date=date(2026, 12, 13)),
     ),
     block_weeks=4,
     pre_race_freshen_days=3,
     post_race_recovery_days=1,
-    sessions_per_week=6,
+    sessions_per_week=7,
     runs_per_week=4,
     strength_per_week=2,
-    rest_days=("Sunday",),
+    rest_days=(),
     long_run_day="Saturday",
     recent_window_days=28,
     secondary_goal="21k",
-    goal_weighting="equal",
-    gym_access="full",
-    # Raised 53 -> 62 on 2026-08-08 for the Nov 14 macrocycle. Running is the gap
+    goal_weighting="race_priority",
+    gym_access="full, mornings only",
+    # Raised 53 -> 62 on 2026-08-08 for the Dec 13 macrocycle. Running is the gap
     # to the Pro field and the old value capped the whole cycle near 61 km, below
     # the ~65 km the goal needs. Athlete chose the aggressive step over a phased
     # ramp; he self-regulates on the day, which is the only check on overshoot.
