@@ -230,7 +230,16 @@ class TestRelativeStrength:
     def test_refuses_a_per_hand_prescription(self) -> None:
         assert bm.parse_load_kg("2x32 kg per hand (70 lb) for 4-6 reps") is None
 
-    def test_ratios_divide_the_recorded_load_by_bodyweight(self) -> None:
+    def test_ratios_divide_the_recorded_load_by_bodyweight(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Pinned so the test does not move every time the live config is updated.
+        monkeypatch.setitem(
+            config.ATHLETE_LOADS, "back_squat", "100 kg for triples @ RPE ~8"
+        )
+        monkeypatch.setitem(
+            config.ATHLETE_LOADS, "trap_bar_deadlift", "130 kg for top triples @ RPE 8"
+        )
         ratios = {r.lift: r for r in bm.relative_strength(80.0)}
         assert ratios["back_squat"].load_kg == 100.0
         assert ratios["back_squat"].ratio == pytest.approx(1.25)

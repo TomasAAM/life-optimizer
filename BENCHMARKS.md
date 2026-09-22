@@ -1,7 +1,7 @@
 # Benchmarks — hybrid endurance (Hyrox + 21k)
 
 Progress-tracking battery for the macrocycle toward **Hyrox #2 (2026-12-13)**, with the
-standing 21k as aerobic support.
+standing 21k as aerobic support. Generation does not read Garmin recovery or
 readiness. Benchmarks close the loop the plan can't: they verify the prescription is actually moving
 fitness, so the "err high / auto-regulate by feel" approach stays honest against a measured trend.
 Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limiter or a goal.
@@ -49,7 +49,7 @@ Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limi
 | Metric | Protocol | Baseline | Target | Why tracked |
 |---|---|---|---|---|
 | **5k time trial** | Flat, fresh, even pacing. | **~sub-20:00** (PB, self-reported) | **sub-19:00** (PB ~ met — retarget for the pro track) | Single-number proxy for VO2/threshold; the headline goal metric. |
-| **Threshold** (LT2 proxy) | **30-min TT** (Friel): avg HR of last 20 min ≈ LTHR, avg pace ≈ threshold pace. Same route, fresh. | **4:34/km @ 163 bpm** (lab 2026-06-19, one-time anchor) | push pace down at same HR | The ceiling both the 21k and Hyrox running share — re-check so zones don't drift. Lab lactate not repeated (access/cost); field TT keeps it current. |
+| **Threshold** (LT2 proxy) | **30-min TT** (Friel): avg HR of last 20 min ≈ LTHR, avg pace ≈ threshold pace. Same route, fresh. | **4:16/km @ 175 bpm** (derived 2026-09-06 from the 08-30 10 km; the 2026-06-19 lab pair is superseded) | push pace down at same HR | The ceiling both the 21k and Hyrox running share — re-check so zones don't drift. Lab lactate not repeated (access/cost); field TT keeps it current. |
 | **LT1** (aerobic threshold) | No recurring lactate test — approximate as a conservative easy cap below LT2 (the plan already caps easy well under the Z2 ceiling). Optional: DFA-a1 HRV app. | **not captured** — approximated | keep easy genuinely easy | Defines the true easy ceiling; without lactate we hold the safe conservative cap rather than a measured value. |
 | **Long-run decoupling** | Pa:HR drift over a steady long run (Garmin/TP). | — | **< 5%** | Aerobic durability — holding pace without HR creep. Essentially free. |
 | **Garmin VO2max** | Passive estimate. | — | upward trend | Noisy; directional support only, never a decision on its own. |
@@ -58,13 +58,13 @@ Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limi
 
 | Metric | Protocol | Baseline | Target | Why tracked |
 |---|---|---|---|---|
-| **Back squat est-1RM** | From an RPE-8 top set (Epley), don't test true 1RM. | working ~100–110 kg @ RPE 8×3 | progressive | Economy + sled drive; low-rep strength is the main economy lever. |
-| **Trap-bar deadlift est-1RM** | RPE-8 top set. | working 130 kg @ RPE 8×3 | progressive | Posterior-chain power for sleds/carries. |
-| **Hip thrust** | Load @ RPE 7–8×6–8. | 110 kg | progressive | Hip extension for running + sled push. |
-| **Upper: weighted pull-up** | Max reps + weighted 3RM. | **bw +5 kg × 4 @ RPE 8** (self-reported 2026-08-08, not a clean test) | close the gap to press strength | Vertical pull → sled pull, ski. The weakest of the three uppers relative to pressing. |
-| **Upper: overhead press** | RPE-8 top set. | **60 kg × 4 @ RPE 8** (self-reported 2026-08-08) | progress | Press strength → wall ball, burpee push-off. |
-| **Upper: dumbbell bench** | RPE-8 top set. | **2×32 kg/hand (70 lb) × 4–6 @ RPE 8** (self-reported 2026-08-08) | progress | Horizontal press → burpee push-off, sled push lockout. |
-| **Relative strength** | Best lifts ÷ bodyweight. | **bodyweight ~75 kg** (2026-08-08) → trap-bar 1.73× · hip thrust 1.47× · squat 1.33× · pull-up 1.07× (bw+5) · DB bench 0.85× · OHP 0.80× — all from *working* loads, not 1RM | ↑ kg/bw at stable bodyweight | Power-to-weight is what Hyrox running rewards — absolute kg alone can mislead. |
+| **Back squat est-1RM** | From an RPE-8 top set (Epley), don't test true 1RM. | **100 kg × 5** (Garmin, 2026-08-18) — triples at 100 kg leave >2 RIR | progressive | Economy + sled drive; low-rep strength is the main economy lever. |
+| **Trap-bar deadlift est-1RM** | RPE-8 top set. | **140 kg × 3** top set (Garmin, 2026-08-11); back-off triples at 130 kg | progressive | Posterior-chain power for sleds/carries. |
+| **Hip thrust** | Load @ RPE 7–8×6–8. | **110 kg × 8 × 3** (Garmin, 2026-09-08; +5 kg per session since August) | progressive | Hip extension for running + sled push. |
+| **Upper: weighted pull-up** | Max reps + weighted 3RM. | **bw +10 kg × 4–5** (Garmin, three sessions since 2026-08-31) | close the gap to press strength | Vertical pull → sled pull, ski. The weakest of the three uppers relative to pressing. |
+| **Upper: overhead press** | RPE-8 top set. | **62.5 kg × 4–5** (Garmin, 2026-09-21) | progress | Press strength → wall ball, burpee push-off. |
+| **Upper: dumbbell bench** | RPE-8 top set. | **2×34 kg/hand × 8** (Garmin, 2026-09-21); 2×32 kg × 8–10 | progress | Horizontal press → burpee push-off, sled push lockout. |
+| **Relative strength** | Best lifts ÷ bodyweight. | **bodyweight 84.4 kg** (scale, mean of 15 fasted AM weigh-ins 2026-09-07..09-22) → trap-bar 1.66× · hip thrust 1.30× · squat 1.18× · pull-up 1.12× (bw+10) · DB bench 0.81× (2×34) · OHP 0.74×. The earlier 75 kg self-report inflated every ratio by ~13% — all from *working* loads, not 1RM | ↑ kg/bw at stable bodyweight | Power-to-weight is what Hyrox running rewards — absolute kg alone can mislead. |
 
 ### 3. Power
 
@@ -115,5 +115,7 @@ Append-only. One row per measurement.
 | 2026-09-05 | Hyrox | Full station sim | 48:48 | min:s | Peñalolén, 32 laps, 5.98 km, max HR 194, TE 4.8 (VO2max), anaerobic TE 3.5, load 431. Garmin 24251406115 | Per-station splits not broken out. Log them next time — the sim is only a benchmark if the station times are recoverable. |
 | 2026-09-06 | Endurance | LT2 (re-anchor) | 4:16 @ 175 | /km @ bpm | Derived, not tested. From the 08-30 10 km + the surviving HR half of the 08-11 TT | Fitting the measured pace–HR curve (6:02→133, 5:05→154, 3:58→183) and extrapolating to 175 bpm gives 4:18 from either end; Riegel on the 10 km gives 4:03. Took 4:16. `training_zones` reseeded. **Confirm with the outdoor 30-min TT in the week of 09-14** — this is an inference until then. |
 | 2026-09-13 | Endurance | Official 10 km race | 40:40 | min:s | Las Condes Carrera; Garmin 9.994 km, 69 m gain, avg HR 181, max HR 195 | Replaces the scheduled outdoor 30-min TT as the current performance benchmark. Rolling course and no kilometre splits: it supports the working 4:16/km threshold prescription but does not precisely re-anchor LTHR. |
+| 2026-09-22 | Body | Bodyweight | 84.4 | kg | Fitdays scale, mean of 15 fasted AM weigh-ins 2026-09-07..09-22 (range 83.8–85.4) | Replaces the self-reported 75 kg. `ATHLETE_BODYWEIGHT_KG` updated. |
+| 2026-09-22 | Strength | Working loads (config refresh) | see notes | kg | Settled Garmin sets, Aug–Sep | Trap-bar 140×3 top (08-11), 130×3 back-offs · squat 100×5 (08-18) · hip thrust 110×8×3 (09-08) · pull-up bw+10×4–5 (since 08-31) · OHP 62.5×4–5 (09-21) · DB bench 2×34×8 (09-21). `ATHLETE_LOADS` updated. |
 
 _Add new rows as you test. Keep dates ISO (YYYY-MM-DD)._

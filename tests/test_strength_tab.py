@@ -22,6 +22,7 @@ import pytest
 
 from dashboard import strength_metrics as sm
 from dashboard import strength_tab as st
+from plan import config
 
 _TODAY = date(2026, 9, 9)
 
@@ -168,9 +169,16 @@ class TestFragment:
             assert heading in html
 
     def test_a_stale_config_load_raises_a_callout(
-        self, exercises: pd.DataFrame, sets: pd.DataFrame
+        self,
+        exercises: pd.DataFrame,
+        sets: pd.DataFrame,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The deadlift fixture lifts 140 kg against a 130 kg config."""
+        # Pinned so the test does not move every time the live config is updated.
+        monkeypatch.setitem(
+            config.ATHLETE_LOADS, "trap_bar_deadlift", "130 kg for top triples @ RPE 8"
+        )
         html = st.strength_section_html(exercises, sets, _TODAY)
         assert "class='callout'" in html
         assert "ATHLETE_LOADS" in html

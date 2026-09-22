@@ -138,27 +138,28 @@ HYROX_STANDARDS: dict[str, str] = {
     "rowing": "1000 m",
     "burpee_broad_jump": "bodyweight, 80 m",
 }
-# Athlete bodyweight (kg), reported 2026-08-08. Needed to read the strength loads
-# below as relative strength — power-to-weight is what the running half of Hyrox
-# rewards, so absolute kilograms alone mislead. Also makes bodyweight-referenced
-# prescriptions (weighted pull-ups, burpee broad jumps) interpretable.
-ATHLETE_BODYWEIGHT_KG = 75.0
+# Athlete bodyweight (kg): mean of 15 fasted-morning smart-scale weigh-ins,
+# 2026-09-07..09-22 (range 83.8-85.4). Replaces the self-reported 75.0 from
+# 2026-08-08, which understated weight by ~9 kg and inflated every relative-strength
+# ratio by ~13%. Power-to-weight is what the running half of Hyrox rewards, so
+# loads are read against this. The Body tab flags drift from the measured trend.
+ATHLETE_BODYWEIGHT_KG = 84.4
 
-# Known athlete capacities — the current working weights the athlete confirmed
-# training on (lower body 2026-07-17, re-confirmed in use 2026-07-20; upper body
-# reported 2026-08-08). Prescribe barbell lifts from these by RPE and progress the
-# load whenever a top set leaves >2 reps in reserve. Update here as the athlete
-# reports feeling too light/heavy.
+# Known athlete capacities, from settled Garmin sets as of 2026-09-22 (the Strength
+# tab's load check compares these with what was lifted). Each value leads with the
+# heaviest load the evidence supports, so the load check stays meaningful. Prescribe
+# from these and progress whenever a top set leaves >2 reps in reserve; where the
+# log already shows that headroom (squat, hip thrust), the next block progresses.
 ATHLETE_LOADS: dict[str, str] = {
-    "back_squat": "100 kg for triples @ RPE ~8 (progress when >2 RIR)",
-    "trap_bar_deadlift": "130 kg for top triples @ RPE 8",
-    "hip_thrust": "110 kg for 6-8 reps",
+    "back_squat": "100 kg for sets of 5 (2026-08-18) — triples at 100 leave >2 RIR, so progress",
+    "trap_bar_deadlift": "140 kg for a top triple (2026-08-11), back-off triples at 130 kg",
+    "hip_thrust": "110 kg for 3x8 (2026-09-08), up 5 kg per session since August",
     "weighted_step_up": "20 kg per hand",
     "wall_balls": "9 kg, ~20 unbroken (build to 25+)",
     "sandbag_lunges": "30 kg comfortable",
-    "pull_up": "bodyweight +5 kg for sets of 4 @ RPE 8",
-    "overhead_press": "60 kg for 4 reps @ RPE 8",
-    "dumbbell_bench_press": "2x32 kg per hand (70 lb) for 4-6 reps @ RPE 8",
+    "pull_up": "bodyweight +10 kg for sets of 4-5 @ RPE 8 (since 2026-08-31)",
+    "overhead_press": "62.5 kg for 4-5 reps @ RPE 8 (2026-09-21)",
+    "dumbbell_bench_press": "2x34 kg per hand for 8 reps (2026-09-21), 2x32 kg for 8-10",
 }
 
 # Evidence-based heavy-strength template for running economy (Blagrove 2018;

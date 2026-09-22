@@ -244,8 +244,12 @@ class TestLoadChecks:
     """The hand-maintained config against what was actually lifted."""
 
     def test_a_load_that_has_moved_past_the_config_is_flagged(
-        self, activities: pd.DataFrame
+        self, activities: pd.DataFrame, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        # Pinned so the test does not move every time the live config is updated.
+        monkeypatch.setitem(
+            config.ATHLETE_LOADS, "trap_bar_deadlift", "130 kg for top triples @ RPE 8"
+        )
         raw = _sets([
             {"activity_id": 3, "set_index": 0, "category": "DEADLIFT",
              "exercise_name": "BARBELL_DEADLIFT", "weight_kg": 140.0},
