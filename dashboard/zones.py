@@ -9,17 +9,18 @@ Compares two sources of HR zones for the same athlete:
   the 2026-09-06 anchor (175 bpm / 4:16), and before it the 2026-06-19 lactate
   step test (LT2 ≈ 163 bpm), which the training log contradicted: easy runs sat
   at 130-140 bpm and long runs at 150-154, impossible if 163 were threshold.
-* **Garmin** — Garmin Connect's zones (``HR_MAX`` method, maxHR = 200), fetched
-  from ``/biometric-service/heartRateZones``. Garmin's own auto-detected lactate
-  threshold HR was 175, but it does not use it for these zones, and the stored
-  value was later overwritten with the lab's 163.
+* **Garmin** — the zones stored on the Garmin Connect account's running profile
+  (``/biometric-service/heartRateZones``). Until 2026-09-22 the account held a
+  lactate-threshold profile on the retired LTHR 163 (floors 95/112/132/150/169),
+  so the watch's zone alerts and training effect ran a zone easy. On 2026-09-22
+  it was set to custom bpm floors matching the working zones, with LTHR 178.
 
-Garmin anchors on an assumed maximum heart rate rather than threshold, so its
-zone boundaries still disagree with the working set. The comparison makes that
-gap visible: the same HR maps to different zones depending on the source.
+The two rows now agree. The comparison stays because Garmin can overwrite the
+account's zones (it auto-detects LTHR), and a silent drift between the watch and
+the plan is exactly what this panel exists to show.
 
-These are reference values that change only when the anchor is re-tested or
-Garmin recomputes; they are stored here as data. Re-anchored 2026-09-22.
+These are reference values stored here as data; re-read the account with the
+Garmin MCP ``get_heart_rate_zones`` tool after any change. Re-anchored 2026-09-22.
 """
 
 from __future__ import annotations
@@ -77,14 +78,14 @@ WORKING = ZoneSystem(
 
 GARMIN = ZoneSystem(
     name="Garmin",
-    source="Garmin Connect (HR_MAX)",
-    anchor="max HR = 200 (assumed)",
+    source="Garmin Connect running profile (custom bpm floors)",
+    anchor="LTHR 178, set 2026-09-22",
     zones=[
-        Zone("Z1", 104, 120),
-        Zone("Z2", 120, 140),
-        Zone("Z3", 140, 162),
-        Zone("Z4", 162, 180),
-        Zone("Z5", 180, None),
+        Zone("Z1", 95, 144),
+        Zone("Z2", 144, 158),
+        Zone("Z3", 158, 166),
+        Zone("Z4", 166, 178),
+        Zone("Z5", 178, None),
     ],
 )
 

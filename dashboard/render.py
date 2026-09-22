@@ -933,9 +933,11 @@ def render_html(
     (avg HR 183 and 181) plus the 2026-08-11 time trial (179.6) put threshold HR at
     ~178-180. This supersedes the 2026-09-06 anchor (175 bpm) and the 2026-06-19
     lactate test (LT2 ≈ 163 bpm), which your training log contradicted — easy runs
-    at 130-140 bpm are impossible if 163 is threshold. <strong>Garmin</strong>
-    anchors on an assumed maximum heart rate (~200), not threshold, so its
-    boundaries still disagree.</p>
+    at 130-140 bpm are impossible if 163 is threshold. <strong>Garmin</strong> is
+    the zone set stored on your watch account. It was moved from the retired LTHR
+    163 to these working zones on 2026-09-22, so the rows should match; if they
+    ever differ, Garmin has overwritten the account and the watch's zone alerts no
+    longer follow the plan.</p>
 
     <h2 style="margin-top:28px">Pace zones</h2>
     <div class="callout">{zones.example_pace_callout("4:30")}</div>
