@@ -49,6 +49,28 @@ week (idempotent per `week_start`) — the review-and-tweak loop.
 
 Re-seed zones after a new lactate test with `python -m plan.zones`.
 
+### Planned vs done
+
+The Training plan tab compares each planned session with that day's Garmin
+activities, part by part (`dashboard/adherence.py`):
+
+- **Run km:** runs, treadmill runs and Hyrox simulations count, because the plan
+  counts simulation km. 85% of the planned km counts as done.
+- **Gym part:** needs a strength activity that day.
+- **Station work:** needs a strength, Hyrox-class or multisport activity that day.
+
+Each session gets a status dot, and hovering it gives the reason:
+
+- **done:** every part happened.
+- **partial:** some parts happened.
+- **swapped:** only something else happened, e.g. a hike instead of a run.
+- **missed:** nothing was recorded.
+
+Below the week panels, a planned-vs-done panel covers the last 8 weeks plus the
+current one: km planned vs run, key sessions (anything hard plus runs of 14 km or
+more), gym sessions, and the latest sessions that weren't fully done. The current
+week counts only sessions already due.
+
 ## Setup
 
 ### 1. Clone the repo
