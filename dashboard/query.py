@@ -319,6 +319,44 @@ def fetch_plan_block(supabase: Client, from_week_iso: str) -> list[dict]:
     return result.data or []
 
 
+def fetch_planned_sessions_between(
+    supabase: Client, first_week_iso: str, last_week_iso: str
+) -> pd.DataFrame:
+    """Fetch the prescribed sessions of every plan week in a range.
+
+    One request for the whole range: a handful of weeks at seven rows each sits
+    far below the 1000-row response cap, so no pagination is needed.
+
+    Parameters
+    ----------
+    supabase : supabase.Client
+        Authenticated Supabase client.
+    first_week_iso, last_week_iso : str
+        ISO Mondays bounding the range, both inclusive.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Sessions ordered by ``session_date``; empty when no week in the range
+        has a plan.
+
+    Examples
+    --------
+    Fetch the last eight weeks plus the current one::
+
+        sessions = fetch_planned_sessions_between(supabase, "2026-07-27", "2026-09-21")
+    """
+    result = (
+        supabase.table("planned_sessions")
+        .select("*")
+        .gte("week_start", first_week_iso)
+        .lte("week_start", last_week_iso)
+        .order("session_date")
+        .execute()
+    )
+    return pd.DataFrame(result.data or [])
+
+
 def fetch_planned_sessions(supabase: Client, week_start: str) -> pd.DataFrame:
     """Fetch the prescribed sessions for a given plan week.
 
