@@ -36,7 +36,8 @@ _PHASE_COLOR = {
 # carry a CSS class instead of an inline colour — an inline style cannot answer
 # ``prefers-color-scheme``, and these need a different tint per scheme.
 _STATUS_CLASS = {
-    "done": "s-done", "missed": "s-missed", "upcoming": "s-upcoming", "rest": "s-rest",
+    "done": "s-done", "partial": "s-partial", "swapped": "s-swapped",
+    "missed": "s-missed", "upcoming": "s-upcoming", "rest": "s-rest",
 }
 # Zone accent dot, easiest → hardest. Saturated data marks: identical in both schemes.
 _ZONE_DOT = {
@@ -228,11 +229,15 @@ class PlanView:
         Lactate-anchored training zones (shared across the block).
     selected_week_start : str
         ISO Monday of the week shown on load — normally the week in progress.
+    adherence_html : str
+        The planned-versus-done panel from :mod:`dashboard.adherence_panel`,
+        rendered below the week panels; empty to omit it.
     """
 
     weeks: list[PlanWeekView] = field(default_factory=list)
     zones: pd.DataFrame = field(default_factory=pd.DataFrame)
     selected_week_start: str = ""
+    adherence_html: str = ""
 
 
 def build_figure(load_series: pd.DataFrame, hrv_series: pd.DataFrame) -> go.Figure:
@@ -583,6 +588,8 @@ def _plan_list(sessions: pd.DataFrame, week_key: str) -> str:
         intensity_cls = _INTENSITY_CLASS.get(r.intensity, "i-none")
         status = getattr(r, "status", "upcoming")
         status_cls = _STATUS_CLASS.get(status, "s-rest")
+        detail = str(getattr(r, "status_detail", "") or "")
+        status_title = escape(f"{status}: {detail}" if detail else status, quote=True)
 
         why = str(presc.get("why", "") or "")
         why_html = (
@@ -599,7 +606,7 @@ def _plan_list(sessions: pd.DataFrame, week_key: str) -> str:
             f"<div class='sess-title'>{escape(str(r.title or ''))}{focus_html}</div>"
             f"<div class='sess-meta'>{' · '.join(meta)}</div></div>"
             f"<span class='ibadge {intensity_cls}'>{escape(str(r.intensity or ''))}</span>"
-            f"<span class='sdot {status_cls}' title='{status}'></span>"
+            f"<span class='sdot {status_cls}' title='{status_title}'></span>"
             f"<span class='chev'>&#9662;</span>"
             f"</div>"
             f"<div class='sess-body' id='{sess_id}'>{_session_steps_html(presc)}"
@@ -706,6 +713,7 @@ def _plan_section(plan: PlanView) -> str:
     {_block_overview(weeks, selected)}
   </div>
   {"".join(week_panels)}
+  {plan.adherence_html}
   <div class="panel">
     <div class="section-label">Methodology &amp; sources</div>
     {methodology_html}

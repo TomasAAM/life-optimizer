@@ -368,9 +368,18 @@ table.zones .muted {{ color: var(--faint); }}
 }}
 .sdot {{ width: 7px; height: 7px; border-radius: 50%; flex: none; }}
 .sdot.s-done {{ background: {theme.COLOR_TSB}; }}
+.sdot.s-partial {{ background: {theme.COLOR_ATL}; }}
+.sdot.s-swapped {{ background: {theme.COLOR_HRV}; }}
 .sdot.s-missed {{ background: #D64437; }}
 .sdot.s-upcoming {{ background: var(--faint); }}
 .sdot.s-rest {{ background: var(--border-strong); }}
+.miss-list {{
+  margin: 6px 0 10px;
+  padding-left: 18px;
+  font-size: 0.86rem;
+  color: var(--muted);
+  line-height: 1.6;
+}}
 .chev {{ color: var(--faint); font-size: 0.7rem; transition: transform 0.22s ease; }}
 .sess-row.open .chev {{ transform: rotate(180deg); }}
 .sess-body {{

@@ -7,13 +7,15 @@ report, and writes it to ``public/index.html`` for GitHub Pages.
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 from dashboard import (
     activity_metrics,
+    adherence,
+    adherence_panel,
     body_tab,
     metrics,
     metrics_tab,
@@ -23,6 +25,7 @@ from dashboard import (
     strength_tab,
     zones,
 )
+from plan.phase import current_monday
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 load_dotenv(_PROJECT_ROOT / ".env", override=True)
@@ -34,6 +37,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 _OUTPUT_PATH = _PROJECT_ROOT / "public" / "index.html"
+
+# Completed plan weeks shown in the planned-versus-done panel, before the week
+# in progress.
+_ADHERENCE_HISTORY_WEEKS = 8
 
 
 def _build_plan_view(supabase, activities) -> render.PlanView:
@@ -72,16 +79,51 @@ def _build_plan_view(supabase, activities) -> render.PlanView:
     weeks = [
         render.PlanWeekView(
             header=header,
-            sessions=metrics.compute_adherence(
-                query.fetch_planned_sessions(supabase, header["week_start"]), activities
+            sessions=adherence.score_sessions(
+                query.fetch_planned_sessions(supabase, header["week_start"]),
+                activities,
+                today,
             ),
         )
         for header in headers
     ]
     logger.info("Loaded %d plan weeks for the block", len(weeks))
     return render.PlanView(
-        weeks=weeks, zones=zones_df, selected_week_start=current["week_start"]
+        weeks=weeks,
+        zones=zones_df,
+        selected_week_start=current["week_start"],
+        adherence_html=_adherence_html(supabase, activities, today),
     )
+
+
+def _adherence_html(supabase, activities, today: date) -> str:
+    """Score the recent plan weeks against activities and render the panel.
+
+    Covers the week in progress plus the ``_ADHERENCE_HISTORY_WEEKS`` before it.
+
+    Parameters
+    ----------
+    supabase : supabase.Client
+        Authenticated Supabase client.
+    activities : pandas.DataFrame
+        Every activity.
+    today : datetime.date
+        The build date.
+
+    Returns
+    -------
+    str
+        The planned-versus-done panel, or an empty string with no plan history.
+    """
+    this_monday = current_monday(today)
+    first_monday = this_monday - timedelta(weeks=_ADHERENCE_HISTORY_WEEKS)
+    planned = query.fetch_planned_sessions_between(
+        supabase, first_monday.isoformat(), this_monday.isoformat()
+    )
+    scored = adherence.score_sessions(planned, activities, today)
+    weeks = adherence.weekly_adherence(scored, activities, today)
+    logger.info("Adherence: %d plan weeks scored", len(weeks))
+    return adherence_panel.adherence_section_html(weeks)
 
 
 def main() -> None:
