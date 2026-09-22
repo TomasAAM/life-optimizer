@@ -1,9 +1,11 @@
 # Training methodology & evidence base
 
-This plan trains a **hybrid endurance athlete** — peaking for **Hyrox (2026-08-02)** and a
-parallel **half-marathon (21k)**, weighted equally. It leans on the deep hybrid/concurrent-training,
-endurance, and strength literature rather than the thin Hyrox-specific research, and is individualized
-to lab-measured lactate zones, periodized toward the race, and auto-regulated by recovery data.
+This plan trains a **hybrid endurance athlete** — peaking for **Hyrox (2026-12-13)**, with a
+standing **half-marathon (21k)** as aerobic support; Hyrox has race priority. It leans on the deep
+hybrid/concurrent-training, endurance, and strength literature rather than the thin Hyrox-specific
+research, and is individualized to a field-anchored LT2 (see BENCHMARKS.md), periodized toward the
+race, and self-regulated on the day by the athlete. Garmin recovery data (HRV, readiness, CTL) is
+displayed on the dashboard but does **not** feed plan generation.
 
 Each claim below is graded for evidence quality. Where the strong evidence contradicts popular
 folklore, the folklore is dropped.

@@ -225,7 +225,7 @@ def render_brief(bundle: BlockContext) -> str:
     lt1_note = ""
     if not bundle.zones.empty and pd.isna(bundle.zones.iloc[0].get("lt1_hr")):
         lt1_note = (
-            "\nNOTE: LT1 was not captured in the lab test — keep easy runs genuinely "
+            "\nNOTE: LT1 has never been measured — keep easy runs genuinely "
             "easy (well below the Z2 ceiling)."
         )
 
@@ -253,9 +253,9 @@ def render_brief(bundle: BlockContext) -> str:
                 "HR/pace, recoveries, station reps/loads.",
                 "steps": [
                     {"phase": "warmup", "kind": "run", "metric": "15 min easy",
-                     "target": "Z1, no faster than 5:22/km", "load": None},
+                     "target": "Z1 HR and pace from the zone table", "load": None},
                     {"phase": "main", "kind": "run", "metric": "10 min at threshold",
-                     "target": "155-163 bpm, 4:48-4:34/km", "load": None},
+                     "target": "Z4 HR and pace from the zone table", "load": None},
                     {"phase": "main", "kind": "rest", "metric": "2:30 jog recovery",
                      "target": "easy", "load": None},
                     {"phase": "main", "kind": "station", "metric": "sled push 4x12.5 m",
@@ -294,8 +294,8 @@ LACTATE-ANCHORED ZONES (shared across the block):
 
 AVAILABILITY & STRUCTURE (every week):
   {cfg.sessions_per_week} sessions/week: ~{cfg.runs_per_week} runs + ~{cfg.strength_per_week} \
-strength/functional; the rest are rest days.
-  Default rest day(s): {", ".join(cfg.rest_days)}. Long/endurance run on {cfg.long_run_day}, except
+strength/functional.
+  Full rest day(s): {", ".join(cfg.rest_days) or "none (one active-recovery day instead)"}. Long/endurance run on {cfg.long_run_day}, except
   Sunday in a simulation week so Saturday can absorb Friday's compromised session.
   Gym access: {cfg.gym_access} — program heavy barbell and explosive/plyometric work, not only \
 bodyweight circuits.

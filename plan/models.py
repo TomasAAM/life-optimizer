@@ -44,8 +44,8 @@ class Step(BaseModel):
     )
     target: Optional[str] = Field(
         default=None,
-        description="Sub-line: target HR/pace/effort or a short note, e.g. '155-163 bpm, "
-        "4:48-4:34/km' or 'then 90s walk'.",
+        description="Sub-line: target HR/pace/effort or a short note, e.g. the Z4 HR and "
+        "pace bounds from the brief's zone table, or 'then 90s walk'.",
     )
     load: Optional[str] = Field(
         default=None,
