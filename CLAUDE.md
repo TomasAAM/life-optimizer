@@ -34,5 +34,8 @@ In every session, especially ones that touch `plan/`, `data/plan_block.json`,
   `wiki/weekly-planning.md` before touching the plan.
 - Zone values live in three places that must move together: `plan/zones.py`,
   `dashboard/zones.py`, and the prose in `dashboard/render.py` + `METHODOLOGY.md`.
-- The GitHub repo and its Pages site are **public**. Never commit personal health
-  data, and keep that exposure in mind for anything new that the dashboard renders.
+- The GitHub repo and its Pages site are **public by Tomás's choice** (confirmed
+  2026-09-22): personal training data (plan, loads, bodyweight, benchmarks) in the
+  repo and on the dashboard is accepted, so don't re-raise it. Secrets are
+  different: credentials, tokens and `.env` values must never be committed or
+  rendered.
