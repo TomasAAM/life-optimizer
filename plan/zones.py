@@ -8,7 +8,8 @@ zones without depending on the garmin-pipeline filesystem.
 ``results_<date>.json`` after a new lab test.
 
 The anchor is *not* required to come from a lab test. The 2026-06-19 step test
-was superseded on 2026-09-06 by field data (see ``_SOURCE_TEST_DATE`` below),
+was superseded by field data on 2026-09-06 and again on 2026-09-22 (see
+``_SOURCE_TEST_DATE`` below),
 because the lab pair contradicted every subsequent race and training run.
 
 Run directly to (re)seed: ``python -m plan.zones``.
@@ -31,52 +32,58 @@ logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 
-# Current zones, re-anchored on 2026-09-06 to LT2 = 4:16/km @ 175 bpm, derived
-# from the 2026-08-30 10 km field effort (10.565 km in 41:49 = 3:57.6/km at avg
-# HR 183, max 194) rather than from a lab test.
+# Current zones, re-anchored on 2026-09-22 to LT2 = 4:10/km @ 178 bpm. Field
+# evidence, no lab test:
 #
-# This replaces the 2026-06-19 step-test pair (4:34/km @ 163 bpm), which the
-# athlete's own training log contradicted: routine easy runs sat at HR 130-140
-# and long runs at 150-154, both impossible if 163 were the lactate threshold.
-# Fitting the measured pace-HR relation (6:02/km -> 133 bpm; 5:05 -> 154;
-# 3:58 -> 183) and extrapolating to 175 bpm gives 4:18/km from either end of the
-# curve; Riegel on the 10 km gives 4:03. 4:16 is taken as the anchor.
+# * The athlete's own pace-HR relation (6:02/km -> 133 bpm; 5:05 -> 154;
+#   3:58 -> 183) is near-linear at ~2.3 s/km per bpm. Evaluated at 178 bpm it
+#   gives 4:10/km from either end of the curve.
+# * Three ~30-40 min maximal efforts put LTHR at ~178-180: the 2026-08-30 10 km
+#   (avg HR 183), the 2026-09-13 official 10 km (avg HR 181) and the naive
+#   last-20-min average of the 2026-08-11 TT (179.6). A race of that length
+#   averages ~1-2% above LTHR.
+# * The 2026-09-22 3x8 min session held 4:12/km at avg HR 174 in a steady rep,
+#   while 4:09/km drifted from 177 to 181 within the rep: threshold sits between.
 #
-# HR bounds follow the standard %LTHR breakpoints off 175 bpm; pace bounds follow
-# the same fractions of threshold speed. Threshold *intervals* are prescribed at
-# the top of Z4 through LT2 itself (roughly 170-178 bpm), since HR drifts up
-# across a rep. Re-seed after the outdoor 30-min time trial confirms or moves it.
+# This supersedes the 2026-09-06 anchor (4:16/km @ 175 bpm), which took the
+# curve's 175 bpm point on the assumption that LTHR was 175. Before that, the
+# 2026-06-19 lab pair (4:34/km @ 163 bpm) was contradicted by every easy run.
+#
+# HR bounds keep the same fractions of LTHR as before (81 / 89 / 93 / 100%);
+# pace bounds keep the same fractions of threshold speed. Threshold *intervals*
+# are prescribed at 4:12-4:08/km, capped at ~180 bpm on the final rep, since HR
+# drifts up across a rep.
 #
 # pace_low = slower bound (s/km), pace_high = faster bound; None = open.
-_SOURCE_TEST_DATE = "2026-08-30"
-_LT2_HR = 175
-_LT2_PACE_S = pace_to_seconds("4:16")
+_SOURCE_TEST_DATE = "2026-09-22"
+_LT2_HR = 178
+_LT2_PACE_S = pace_to_seconds("4:10")
 
 _SEED_ZONES: list[dict[str, Any]] = [
     {
         "zone_index": 1, "zone_name": "Recovery",
-        "hr_low": None, "hr_high": 142,
-        "pace_low_s_per_km": None, "pace_high_s_per_km": pace_to_seconds("5:45"),
+        "hr_low": None, "hr_high": 144,
+        "pace_low_s_per_km": None, "pace_high_s_per_km": pace_to_seconds("5:37"),
     },
     {
         "zone_index": 2, "zone_name": "Endurance",
-        "hr_low": 142, "hr_high": 155,
-        "pace_low_s_per_km": pace_to_seconds("5:45"), "pace_high_s_per_km": pace_to_seconds("5:05"),
+        "hr_low": 144, "hr_high": 158,
+        "pace_low_s_per_km": pace_to_seconds("5:37"), "pace_high_s_per_km": pace_to_seconds("4:58"),
     },
     {
         "zone_index": 3, "zone_name": "Tempo",
-        "hr_low": 155, "hr_high": 163,
-        "pace_low_s_per_km": pace_to_seconds("5:05"), "pace_high_s_per_km": pace_to_seconds("4:33"),
+        "hr_low": 158, "hr_high": 166,
+        "pace_low_s_per_km": pace_to_seconds("4:58"), "pace_high_s_per_km": pace_to_seconds("4:27"),
     },
     {
         "zone_index": 4, "zone_name": "Threshold",
-        "hr_low": 163, "hr_high": 175,
-        "pace_low_s_per_km": pace_to_seconds("4:33"), "pace_high_s_per_km": pace_to_seconds("4:16"),
+        "hr_low": 166, "hr_high": 178,
+        "pace_low_s_per_km": pace_to_seconds("4:27"), "pace_high_s_per_km": pace_to_seconds("4:10"),
     },
     {
         "zone_index": 5, "zone_name": "VO2max",
-        "hr_low": 175, "hr_high": None,
-        "pace_low_s_per_km": pace_to_seconds("4:16"), "pace_high_s_per_km": None,
+        "hr_low": 178, "hr_high": None,
+        "pace_low_s_per_km": pace_to_seconds("4:10"), "pace_high_s_per_km": None,
     },
 ]
 

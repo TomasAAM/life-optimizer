@@ -920,13 +920,14 @@ def render_html(
     <div class="panel">{zones_chart_html}</div>
     <div class="panel">{zones.zone_table_html()}</div>
     <p class="note">Your <strong>Working</strong> zones are anchored on
-    LT2 ≈ {zones.WORKING_LT2_HR} bpm, re-derived on 2026-09-06 from the 2026-08-30
-    10 km (3:57.6/km at avg HR 183) plus the surviving HR half of the 2026-08-11
-    time trial. They replace the 2026-06-19 lactate test (LT2 ≈ 163 bpm), which your
-    own training log contradicted — easy runs at 130-140 bpm are impossible if 163
-    is threshold. <strong>Garmin</strong> anchors on an assumed maximum heart rate
-    (~200), not threshold, so its boundaries still disagree; Garmin's own
-    auto-detected threshold HR was 175, the same figure the field data gives.</p>
+    LT2 ≈ {zones.WORKING_LT2_HR} bpm, re-derived on 2026-09-22: your own pace-HR
+    curve gives 4:10/km at 178 bpm from either end, and two ~40 min 10 km races
+    (avg HR 183 and 181) plus the 2026-08-11 time trial (179.6) put threshold HR at
+    ~178-180. This supersedes the 2026-09-06 anchor (175 bpm) and the 2026-06-19
+    lactate test (LT2 ≈ 163 bpm), which your training log contradicted — easy runs
+    at 130-140 bpm are impossible if 163 is threshold. <strong>Garmin</strong>
+    anchors on an assumed maximum heart rate (~200), not threshold, so its
+    boundaries still disagree.</p>
 
     <h2 style="margin-top:28px">Pace zones</h2>
     <div class="callout">{zones.example_pace_callout("4:30")}</div>
@@ -935,8 +936,8 @@ def render_html(
     <p class="note">Pace zones come from the same anchor (threshold pace
     ≈ {zones.format_pace(zones.WORKING_LT2_PACE_S)}/km). There is nothing to compare
     them against: <strong>Garmin</strong> does not publish running pace zones for
-    this athlete. The outdoor 30-min time trial in the week of 09-14 is what turns
-    this anchor from an inference into a measurement.</p>
+    this athlete. The anchor is still an inference from races and training data;
+    the steady-state reps of each threshold session are what confirm or move it.</p>
   </div>
 
   <footer>Generated {generated} · Garmin training load + HRV · TSB bands follow

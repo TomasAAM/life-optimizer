@@ -2,24 +2,24 @@
 
 Compares two sources of HR zones for the same athlete:
 
-* **Working** — anchored on LT2 ≈ 175 bpm / 4:16 per km, re-derived on
-  2026-09-06 from the 2026-08-30 10 km field effort (3:57.6/km at avg HR 183)
-  and the surviving heart-rate half of the 2026-08-11 time trial. This replaced
-  the 2026-06-19 lactate step test (LT2 ≈ 163 bpm), which the athlete's own
-  training log contradicted: easy runs sat at 130-140 bpm and long runs at
-  150-154, impossible if 163 were threshold.
+* **Working** — anchored on LT2 ≈ 178 bpm / 4:10 per km, re-derived on
+  2026-09-22. The athlete's own pace-HR curve gives 4:10/km at 178 bpm from
+  either end; two ~40 min 10 km races (avg HR 183 and 181) and the naive
+  2026-08-11 time-trial average (179.6) put LTHR at ~178-180. This supersedes
+  the 2026-09-06 anchor (175 bpm / 4:16), and before it the 2026-06-19 lactate
+  step test (LT2 ≈ 163 bpm), which the training log contradicted: easy runs sat
+  at 130-140 bpm and long runs at 150-154, impossible if 163 were threshold.
 * **Garmin** — Garmin Connect's zones (``HR_MAX`` method, maxHR = 200), fetched
   from ``/biometric-service/heartRateZones``. Garmin's own auto-detected lactate
-  threshold HR was 175 — the same figure the field data gives — but it does not
-  use it for these zones, and the stored value was later overwritten with the
-  lab's 163.
+  threshold HR was 175, but it does not use it for these zones, and the stored
+  value was later overwritten with the lab's 163.
 
 Garmin anchors on an assumed maximum heart rate rather than threshold, so its
 zone boundaries still disagree with the working set. The comparison makes that
 gap visible: the same HR maps to different zones depending on the source.
 
 These are reference values that change only when the anchor is re-tested or
-Garmin recomputes; they are stored here as data. Re-anchored 2026-09-06.
+Garmin recomputes; they are stored here as data. Re-anchored 2026-09-22.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ _AXIS_MAX = 200
 _ZONE_COLORS = ["#16a34a", "#84cc16", "#eab308", "#f97316", "#dc2626"]
 
 # The working anchor (LT2) — also drawn as a reference line.
-WORKING_LT2_HR = 175
+WORKING_LT2_HR = 178
 
 
 @dataclass(frozen=True)
@@ -64,14 +64,14 @@ class ZoneSystem:
 
 WORKING = ZoneSystem(
     name="Working (field-anchored)",
-    source="2026-08-30 10 km + 2026-08-11 TT (HR half)",
-    anchor="LT2 threshold ≈ 175 bpm",
+    source="Pace-HR curve + two 10 km races + 2026-08-11 TT (HR half)",
+    anchor="LT2 threshold ≈ 178 bpm",
     zones=[
-        Zone("Z1 Recovery", None, 142),
-        Zone("Z2 Endurance", 142, 155),
-        Zone("Z3 Tempo", 155, 163),
-        Zone("Z4 Threshold", 163, 175),
-        Zone("Z5 VO2max", 175, None),
+        Zone("Z1 Recovery", None, 144),
+        Zone("Z2 Endurance", 144, 158),
+        Zone("Z3 Tempo", 158, 166),
+        Zone("Z4 Threshold", 166, 178),
+        Zone("Z5 VO2max", 178, None),
     ],
 )
 
@@ -209,7 +209,7 @@ _PACE_AXIS_FAST = 210  # 3:30/km
 _PACE_COLORS = ["#16a34a", "#84cc16", "#eab308", "#f97316", "#dc2626"]
 
 # The working threshold pace (LT2), drawn as a reference line.
-WORKING_LT2_PACE_S = 256  # 4:16/km
+WORKING_LT2_PACE_S = 250  # 4:10/km
 
 
 def pace_seconds(pace: str) -> int:
@@ -247,13 +247,13 @@ class PaceSystem:
 
 WORKING_PACE = PaceSystem(
     name="Working (field-anchored)",
-    source="LT2 pace ≈ 4:16/km",
+    source="LT2 pace ≈ 4:10/km",
     zones=[
-        PaceZone("Z1 Recovery", None, pace_seconds("5:45")),
-        PaceZone("Z2 Endurance", pace_seconds("5:45"), pace_seconds("5:05")),
-        PaceZone("Z3 Tempo", pace_seconds("5:05"), pace_seconds("4:33")),
-        PaceZone("Z4 Threshold", pace_seconds("4:33"), pace_seconds("4:16")),
-        PaceZone("Z5 VO2max", pace_seconds("4:16"), None),
+        PaceZone("Z1 Recovery", None, pace_seconds("5:37")),
+        PaceZone("Z2 Endurance", pace_seconds("5:37"), pace_seconds("4:58")),
+        PaceZone("Z3 Tempo", pace_seconds("4:58"), pace_seconds("4:27")),
+        PaceZone("Z4 Threshold", pace_seconds("4:27"), pace_seconds("4:10")),
+        PaceZone("Z5 VO2max", pace_seconds("4:10"), None),
     ],
 )
 

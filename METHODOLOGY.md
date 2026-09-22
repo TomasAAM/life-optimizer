@@ -23,8 +23,8 @@ little "grey zone." This is why we cap hard days and keep easy days genuinely ea
 - *Caveat:* the polarized-vs-pyramidal edge is modest; the robust finding is the large easy fraction.
 
 ### 2. Threshold work to raise LT2
-Sparing, high-quality threshold sessions anchored on the athlete's current LT2 (≈ 175 bpm / 4:16/km,
-re-anchored 2026-09-06 — see BENCHMARKS.md) raise the aerobic ceiling that serves both the 21k and
+Sparing, high-quality threshold sessions anchored on the athlete's current LT2 (≈ 178 bpm / 4:10/km,
+re-anchored 2026-09-22 — see BENCHMARKS.md) raise the aerobic ceiling that serves both the 21k and
 Hyrox running. The anchor matters more than the method: the retired 2026-06-19 lab pair (163 bpm /
 4:34/km) put every "threshold" session a full zone too easy, which is tempo work wearing the label.
 - **Moderate / practice-derived** — the Norwegian lactate-guided / double-threshold approach
