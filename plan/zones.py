@@ -1,7 +1,7 @@
 """Seed the ``training_zones`` table from the athlete's current LT2 anchor.
 
-The five zones are anchored on LT2; LT1 has never been captured, so the
-Recovery/Endurance bound is an approximation flagged downstream. The current
+Z3-Z5 are anchored on LT2. The Endurance ceiling is LT1, which has no lab or
+HRV measurement: it is the athlete's talk-test estimate (see ``_LT1_HR``). The current
 values are embedded as ``_SEED_ZONES`` so the dashboard DB has authoritative
 zones without depending on the garmin-pipeline filesystem.
 :func:`load_from_results_json` refreshes them from a garmin-pipeline
@@ -49,8 +49,8 @@ _PROJECT_ROOT = Path(__file__).parent.parent
 # curve's 175 bpm point on the assumption that LTHR was 175. Before that, the
 # 2026-06-19 lab pair (4:34/km @ 163 bpm) was contradicted by every easy run.
 #
-# HR bounds keep the same fractions of LTHR as before (81 / 89 / 93 / 100%);
-# pace bounds keep the same fractions of threshold speed. Threshold *intervals*
+# The Tempo/Threshold/VO2max bounds keep the same fractions of LTHR as before
+# (93 / 100%) and of threshold speed. Threshold *intervals*
 # are prescribed at 4:12-4:08/km, capped at ~180 bpm on the final rep, since HR
 # drifts up across a rep.
 #
@@ -59,21 +59,31 @@ _SOURCE_TEST_DATE = "2026-09-22"
 _LT2_HR = 178
 _LT2_PACE_S = pace_to_seconds("4:10")
 
+# LT1, set 2026-09-24 from the athlete's talk test: at 145 bpm full sentences
+# stop and the athlete has to slow down. Easy runs had averaged 128-140 bpm,
+# so the old 81-89% LTHR Endurance band (144-158) sat almost entirely above
+# the easy running. The pace equivalents are read off recorded runs (5:51/km
+# @ 136 on the flat, 5:33/km @ 140 on the 16 km long run) and are only a
+# guide: HR governs easy days. The Recovery ceiling (130) is where recovery
+# jogs sit (128-131 bpm).
+_LT1_HR = 145
+_LT1_PACE_S = pace_to_seconds("5:25")
+
 _SEED_ZONES: list[dict[str, Any]] = [
     {
         "zone_index": 1, "zone_name": "Recovery",
-        "hr_low": None, "hr_high": 144,
-        "pace_low_s_per_km": None, "pace_high_s_per_km": pace_to_seconds("5:37"),
+        "hr_low": None, "hr_high": 130,
+        "pace_low_s_per_km": None, "pace_high_s_per_km": pace_to_seconds("6:10"),
     },
     {
         "zone_index": 2, "zone_name": "Endurance",
-        "hr_low": 144, "hr_high": 158,
-        "pace_low_s_per_km": pace_to_seconds("5:37"), "pace_high_s_per_km": pace_to_seconds("4:58"),
+        "hr_low": 130, "hr_high": _LT1_HR,
+        "pace_low_s_per_km": pace_to_seconds("6:10"), "pace_high_s_per_km": _LT1_PACE_S,
     },
     {
         "zone_index": 3, "zone_name": "Tempo",
-        "hr_low": 158, "hr_high": 166,
-        "pace_low_s_per_km": pace_to_seconds("4:58"), "pace_high_s_per_km": pace_to_seconds("4:27"),
+        "hr_low": _LT1_HR, "hr_high": 166,
+        "pace_low_s_per_km": _LT1_PACE_S, "pace_high_s_per_km": pace_to_seconds("4:27"),
     },
     {
         "zone_index": 4, "zone_name": "Threshold",
@@ -180,8 +190,8 @@ def seed(supabase: Client | None = None, rows: list[dict[str, Any]] | None = Non
             source_test_date=_SOURCE_TEST_DATE,
             lt2_hr=_LT2_HR,
             lt2_pace_s=_LT2_PACE_S,
-            lt1_hr=None,
-            lt1_pace_s=None,
+            lt1_hr=_LT1_HR,
+            lt1_pace_s=_LT1_PACE_S,
         )
     supabase.table("training_zones").upsert(rows, on_conflict="zone_index").execute()
     logger.info("Seeded %d training zones (source test %s)", len(rows), rows[0]["source_test_date"])

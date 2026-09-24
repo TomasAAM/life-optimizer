@@ -2,8 +2,9 @@
 
 Compares two sources of HR zones for the same athlete:
 
-* **Working** — anchored on LT2 ≈ 178 bpm / 4:10 per km, re-derived on
-  2026-09-22. The athlete's own pace-HR curve gives 4:10/km at 178 bpm from
+* **Working** — Tempo to VO2max anchored on LT2 ≈ 178 bpm / 4:10 per km,
+  re-derived on 2026-09-22; the Endurance ceiling is LT1 ≈ 145 bpm, the
+  athlete's talk-test estimate from 2026-09-24. The athlete's own pace-HR curve gives 4:10/km at 178 bpm from
   either end; two ~40 min 10 km races (avg HR 183 and 181) and the naive
   2026-08-11 time-trial average (179.6) put LTHR at ~178-180. This supersedes
   the 2026-09-06 anchor (175 bpm / 4:16), and before it the 2026-06-19 lactate
@@ -13,7 +14,8 @@ Compares two sources of HR zones for the same athlete:
   (``/biometric-service/heartRateZones``). Until 2026-09-22 the account held a
   lactate-threshold profile on the retired LTHR 163 (floors 95/112/132/150/169),
   so the watch's zone alerts and training effect ran a zone easy. On 2026-09-22
-  it was set to custom bpm floors matching the working zones, with LTHR 178.
+  it was set to custom bpm floors matching the working zones, with LTHR 178,
+  and on 2026-09-24 the easy floors moved to 130 / 145 with the LT1 estimate.
 
 The two rows now agree. The comparison stays because Garmin can overwrite the
 account's zones (it auto-detects LTHR), and a silent drift between the watch and
@@ -65,12 +67,12 @@ class ZoneSystem:
 
 WORKING = ZoneSystem(
     name="Working (field-anchored)",
-    source="Pace-HR curve + two 10 km races + 2026-08-11 TT (HR half)",
-    anchor="LT2 threshold ≈ 178 bpm",
+    source="Pace-HR curve + two 10 km races + 2026-08-11 TT (HR half); talk-test LT1",
+    anchor="LT2 ≈ 178 bpm · LT1 ≈ 145 bpm",
     zones=[
-        Zone("Z1 Recovery", None, 144),
-        Zone("Z2 Endurance", 144, 158),
-        Zone("Z3 Tempo", 158, 166),
+        Zone("Z1 Recovery", None, 130),
+        Zone("Z2 Endurance", 130, 145),
+        Zone("Z3 Tempo", 145, 166),
         Zone("Z4 Threshold", 166, 178),
         Zone("Z5 VO2max", 178, None),
     ],
@@ -79,11 +81,11 @@ WORKING = ZoneSystem(
 GARMIN = ZoneSystem(
     name="Garmin",
     source="Garmin Connect running profile (custom bpm floors)",
-    anchor="LTHR 178, set 2026-09-22",
+    anchor="LTHR 178, easy floors set 2026-09-24",
     zones=[
-        Zone("Z1", 95, 144),
-        Zone("Z2", 144, 158),
-        Zone("Z3", 158, 166),
+        Zone("Z1", 95, 130),
+        Zone("Z2", 130, 145),
+        Zone("Z3", 145, 166),
         Zone("Z4", 166, 178),
         Zone("Z5", 178, None),
     ],
@@ -203,7 +205,7 @@ def example_hr_callout(hr: int = 165) -> str:
 # have -- this section presents them rather than comparing sources.
 
 # Pace band-chart axis, seconds per km (slow on the left, fast on the right).
-_PACE_AXIS_SLOW = 360  # 6:00/km
+_PACE_AXIS_SLOW = 390  # 6:30/km
 _PACE_AXIS_FAST = 210  # 3:30/km
 
 # Five-step ramp, one colour per pace zone.
@@ -248,11 +250,11 @@ class PaceSystem:
 
 WORKING_PACE = PaceSystem(
     name="Working (field-anchored)",
-    source="LT2 pace ≈ 4:10/km",
+    source="LT2 pace ≈ 4:10/km · LT1 ≈ 5:25/km (guide only)",
     zones=[
-        PaceZone("Z1 Recovery", None, pace_seconds("5:37")),
-        PaceZone("Z2 Endurance", pace_seconds("5:37"), pace_seconds("4:58")),
-        PaceZone("Z3 Tempo", pace_seconds("4:58"), pace_seconds("4:27")),
+        PaceZone("Z1 Recovery", None, pace_seconds("6:10")),
+        PaceZone("Z2 Endurance", pace_seconds("6:10"), pace_seconds("5:25")),
+        PaceZone("Z3 Tempo", pace_seconds("5:25"), pace_seconds("4:27")),
         PaceZone("Z4 Threshold", pace_seconds("4:27"), pace_seconds("4:10")),
         PaceZone("Z5 VO2max", pace_seconds("4:10"), None),
     ],

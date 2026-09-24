@@ -223,11 +223,18 @@ def render_brief(bundle: BlockContext) -> str:
     """
     cfg = bundle.cfg
     lt1_note = ""
-    if not bundle.zones.empty and pd.isna(bundle.zones.iloc[0].get("lt1_hr")):
-        lt1_note = (
-            "\nNOTE: LT1 has never been measured — keep easy runs genuinely "
-            "easy (well below the Z2 ceiling)."
-        )
+    if not bundle.zones.empty:
+        lt1_hr = bundle.zones.iloc[0].get("lt1_hr")
+        if pd.isna(lt1_hr):
+            lt1_note = (
+                "\nNOTE: LT1 has never been measured — keep easy runs genuinely "
+                "easy (well below the Z2 ceiling)."
+            )
+        else:
+            lt1_note = (
+                f"\nNOTE: LT1 ≈ {int(lt1_hr)} bpm is the athlete's talk-test estimate. "
+                f"Cap every easy run at HR <={int(lt1_hr)} bpm, conversational."
+            )
 
     race_line = "; ".join(f"{r.name} {r.date.isoformat()}" for r in cfg.races)
     week_blocks = "\n".join(_format_week_plan(w, cfg) for w in bundle.weeks)
