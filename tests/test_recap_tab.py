@@ -60,7 +60,7 @@ def test_cards_without_data_are_skipped() -> None:
 
 def test_there_is_no_plan_card_even_with_a_plan() -> None:
     september = _months()[0]
-    assert september.plan is not None
+    assert september.running.weeks[0].planned_km is not None
     assert "data-card='plan'" not in "".join(rt.story_cards(september))
 
 

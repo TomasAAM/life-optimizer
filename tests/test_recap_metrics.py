@@ -184,34 +184,16 @@ class TestRunning:
         assert _recap(date(2026, 9, 1), activities).running.easy_pace_s == pytest.approx(360.0)
 
 
-class TestPlan:
-    def test_no_plan_means_no_plan_card(self) -> None:
-        assert _recap(date(2026, 9, 1), _frame([_activity("2026-09-05")])).plan is None
+class TestPlannedKm:
+    def test_no_plan_means_no_planned_tick(self) -> None:
+        weeks = _recap(date(2026, 9, 1), _frame([_activity("2026-09-05")])).running.weeks
+        assert all(w.planned_km is None for w in weeks)
 
-    def test_sessions_are_scored_part_by_part(self) -> None:
-        activities = _frame([
-            _activity("2026-09-01", km=8.0),
-            _activity("2026-09-02", km=3.0),
-            _activity("2026-09-03", activity_type="hiking", km=5.0),
-        ])
-        planned = [
-            _session("2026-09-01"),
-            _session("2026-09-02"),
-            _session("2026-09-03"),
-            _session("2026-09-04", km=16.0, title="Long"),
-            _session("2026-09-05", km=None, kinds=(), session_type="rest", title="Rest"),
-        ]
-        plan = _recap(date(2026, 9, 1), activities, planned).plan
-        assert plan.status_counts == {"done": 1, "partial": 1, "swapped": 1, "missed": 1}
-        assert plan.sessions_due == 4
-        assert (plan.key_planned, plan.key_done) == (1, 0)
-        assert plan.planned_km == pytest.approx(40.0)
-        assert plan.done_km == pytest.approx(11.0)
-
-    def test_sessions_still_to_come_are_not_due(self) -> None:
-        planned = [_session("2026-10-01"), _session("2026-10-05")]
-        plan = _recap(date(2026, 10, 1), _frame([_activity("2026-10-01")]), planned).plan
-        assert plan.sessions_due == 1
+    def test_the_tick_sums_the_planned_km_of_the_week_s_days_in_the_month(self) -> None:
+        planned = [_session("2026-08-31", km=10.0), _session("2026-09-01", km=8.0),
+                   _session("2026-09-03", km=6.0)]
+        weeks = _recap(date(2026, 9, 1), _frame([_activity("2026-09-01")]), planned).running.weeks
+        assert weeks[0].planned_km == pytest.approx(14.0)
 
 
 class TestStrength:
@@ -309,7 +291,7 @@ class TestTakeaways:
         planned = [_session("2026-09-05", km=12.0, intensity="hard", title="Threshold")]
         lines = _recap(date(2026, 9, 1), activities, planned).takeaways
         assert lines[0] == "Running km up 20% on August (10 → 12 km)."
-        assert lines[1] == "1 of 1 key sessions done, 100% of planned km."
+        assert not any("key session" in line for line in lines)
 
     def test_no_baseline_means_no_percentage(self) -> None:
         lines = _recap(date(2026, 9, 1), _frame([_activity("2026-09-05")])).takeaways

@@ -10,9 +10,9 @@ inherited rather than restated:
 * **Zones** come from :func:`dashboard.activity_metrics.assign_zones`, which
   buckets a run by its *average* heart rate. That is a proxy, and the card says
   so.
-* **Planned versus done** comes from :func:`dashboard.adherence.score_sessions`,
-  part by part, so a hike on a run day is a swap here exactly as it is on the
-  Training plan tab.
+* **Planned km** on the weekly bars comes from
+  :func:`dashboard.adherence.score_sessions`, the same per-session figure the
+  Training plan tab uses.
 * **Lifts** come from :func:`dashboard.strength_metrics.top_sets`, settled sets
   only, so no lift is named on Garmin's guess.
 
@@ -30,7 +30,6 @@ from datetime import date, timedelta
 import pandas as pd
 
 from dashboard import activity_metrics as am
-from dashboard import adherence
 from dashboard import body_metrics as bm
 from dashboard import strength_metrics as sm
 from plan.config import Race
@@ -225,46 +224,6 @@ class RunningRecap:
 
 
 @dataclass(frozen=True)
-class PlanRecap:
-    """Planned versus done over the month's due sessions.
-
-    Not a card of its own: it feeds the closing lines (key sessions and the
-    share of planned km).
-
-    Parameters
-    ----------
-    planned_km, done_km : float
-        Planned run km of the due sessions, and run km recorded on the planned
-        days (unplanned runs included, as on the Training plan tab).
-    sessions_due, sessions_done : int
-        Due sessions (rest days excluded) and how many were fully done.
-    status_counts : dict of str to int
-        Due sessions per status: done, partial, swapped, missed.
-    key_planned, key_done : int
-        Key sessions due and done.
-    gym_planned, gym_done : int
-        Gym sessions due and done.
-    """
-
-    planned_km: float
-    done_km: float
-    sessions_due: int
-    sessions_done: int
-    status_counts: dict[str, int]
-    key_planned: int
-    key_done: int
-    gym_planned: int
-    gym_done: int
-
-    @property
-    def km_pct(self) -> float | None:
-        """Done km as a percentage of planned km, ``None`` with nothing planned."""
-        if self.planned_km <= 0:
-            return None
-        return 100.0 * self.done_km / self.planned_km
-
-
-@dataclass(frozen=True)
 class LiftLine:
     """One lift on the strength card.
 
@@ -397,8 +356,6 @@ class MonthRecap:
         One mark per day of the month, including days after ``through``.
     running : RunningRecap
         The running card.
-    plan : PlanRecap or None
-        Planned versus done, ``None`` when no plan covered the month.
     strength : StrengthRecap or None
         The strength card, ``None`` with no strength sessions.
     body : BodyRecap
@@ -421,7 +378,6 @@ class MonthRecap:
     longest_streak: int
     calendar: tuple[DayMark, ...]
     running: RunningRecap
-    plan: PlanRecap | None
     strength: StrengthRecap | None
     body: BodyRecap
     races: RaceRecap
@@ -620,36 +576,6 @@ def _week_bars(
     return tuple(bars)
 
 
-def _plan(
-    scored: pd.DataFrame, activities: pd.DataFrame, first: date, through: date
-) -> PlanRecap | None:
-    """Score the sessions due inside the month against the plan."""
-    if scored.empty:
-        return None
-    session_days = pd.to_datetime(scored["session_date"]).dt.date
-    in_month = scored[_between(session_days, first, through)]
-    if in_month.empty:
-        return None
-
-    due = in_month[in_month["status"].isin(adherence.DUE_STATUSES)]
-    actuals = adherence.day_actuals(activities)
-    planned_days = set(pd.to_datetime(in_month["session_date"]).dt.date)
-    done_km = sum(actuals[d].run_km for d in planned_days if d in actuals and d <= through)
-
-    counts = {s: int((due["status"] == s).sum()) for s in adherence.DUE_STATUSES}
-    return PlanRecap(
-        planned_km=round(float(due["planned_km"].sum()), 1),
-        done_km=round(float(done_km), 1),
-        sessions_due=len(due),
-        sessions_done=counts["done"],
-        status_counts=counts,
-        key_planned=int(due["is_key"].sum()),
-        key_done=int((due["is_key"] & (due["status"] == "done")).sum()),
-        gym_planned=int(due["gym_planned"].sum()),
-        gym_done=int(due["gym_done"].sum()),
-    )
-
-
 def _strength(
     frame: pd.DataFrame,
     sets: pd.DataFrame,
@@ -816,13 +742,6 @@ def takeaways(recap: MonthRecap) -> tuple[str, ...]:
     elif running.km > 0:
         lines.append(f"{running.km:.0f} km run across {running.runs} runs.")
 
-    plan = recap.plan
-    if plan is not None and plan.key_planned:
-        lines.append(
-            f"{plan.key_done} of {plan.key_planned} key sessions done"
-            + (f", {plan.km_pct:.0f}% of planned km." if plan.km_pct is not None else ".")
-        )
-
     if running.easy_pace_s is not None and running.prev_easy_pace_s is not None:
         delta = running.easy_pace_s - running.prev_easy_pace_s
         if abs(delta) >= 3:
@@ -915,7 +834,6 @@ def build_month_recap(
         longest_streak=_longest_streak(active, first, through),
         calendar=_calendar(frame, first, last),
         running=_running(runs, trend, scored_sessions, first, through, prev),
-        plan=_plan(scored_sessions, activities, first, through),
         strength=_strength(frame, strength_sets, first, through, prev),
         body=_body(frame, weigh_ins, hrv_series, first, through, prev),
         races=_races(races, first, through),

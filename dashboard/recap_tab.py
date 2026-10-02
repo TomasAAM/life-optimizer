@@ -469,8 +469,8 @@ _NOTES = (
     "is a rough proxy, not time in zone.",
     "Easy pace is the median of outdoor easy runs only; belt pace is set by the "
     "machine.",
-    "Key sessions in the closing lines are scored part by part, exactly as on "
-    "the Training plan tab: run km (85% counts), gym, station work.",
+    "The orange line on the weekly bars is the run km the plan set for the same "
+    "days.",
     "On the calendar, a run day that also had gym or Hyrox carries a band at the "
     "bottom of its square.",
     "Lifts are named only where Garmin identified the movement with certainty. "

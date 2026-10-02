@@ -88,8 +88,8 @@ data and rules as the other tabs (`dashboard/recap_metrics.py` for the numbers,
    (heavier than any earlier month).
 4. **Body:** weight trend, overnight HRV against Garmin's baseline, and
    training load.
-5. **In short:** up to four lines from fixed rules (including key sessions done
-   against the plan), plus the countdown to the next race.
+5. **In short:** up to four lines from fixed rules, plus the countdown to the
+   next race.
 
 How each number is derived is listed under the viewer ("How these numbers are
 made"), not printed on the images.
