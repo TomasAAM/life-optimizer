@@ -16,15 +16,19 @@ from dashboard import (
     activity_metrics,
     adherence,
     adherence_panel,
+    body_metrics,
     body_tab,
     metrics,
     metrics_tab,
     query,
+    recap_metrics,
+    recap_tab,
     render,
     strength_metrics,
     strength_tab,
     zones,
 )
+from plan.config import DEFAULT_CONFIG
 from plan.phase import current_monday
 
 _PROJECT_ROOT = Path(__file__).parent.parent
@@ -126,6 +130,69 @@ def _adherence_html(supabase, activities, today: date) -> str:
     return adherence_panel.adherence_section_html(weeks)
 
 
+def _recap_html(
+    supabase,
+    activities,
+    runs,
+    zones_df,
+    strength_sets,
+    body,
+    hrv_series,
+    today: date,
+) -> str:
+    """Build every month's recap and render the Recap tab.
+
+    Planned sessions are fetched once for the whole history and scored with the
+    same rules as the Training plan tab, so the two can never disagree.
+
+    Parameters
+    ----------
+    supabase : supabase.Client
+        Authenticated Supabase client.
+    activities : pandas.DataFrame
+        Every activity.
+    runs : pandas.DataFrame
+        Output of :func:`dashboard.activity_metrics.prepare_runs`.
+    zones_df : pandas.DataFrame
+        The lactate zone table.
+    strength_sets : pandas.DataFrame
+        Output of :func:`dashboard.strength_metrics.prepare_sets`.
+    body : pandas.DataFrame
+        Raw weigh-ins from :func:`dashboard.query.fetch_body_composition`.
+    hrv_series : pandas.DataFrame
+        Output of :func:`dashboard.metrics.build_hrv_series`.
+    today : datetime.date
+        The build date.
+
+    Returns
+    -------
+    str
+        The Recap tab fragment, or an empty string with no activities.
+    """
+    months = recap_metrics.available_months(activities, today)
+    if not months:
+        return ""
+    first_monday = current_monday(months[-1])
+    planned = query.fetch_planned_sessions_between(
+        supabase, first_monday.isoformat(), current_monday(today).isoformat()
+    )
+    scored = adherence.score_sessions(planned, activities, today)
+    weigh_ins = body_metrics.prepare_weigh_ins(body)
+    recaps = [
+        recap_metrics.build_month_recap(
+            month, today, activities, runs, zones_df, scored,
+            strength_sets, weigh_ins, hrv_series, DEFAULT_CONFIG.races,
+        )
+        for month in months
+    ]
+    # Open on the last finished month: on the 2nd, two days of October say
+    # far less than the whole of September.
+    finished = [r for r in recaps if not r.in_progress]
+    selected = (finished[0] if finished else recaps[0]).key
+    logger.info("Recap: %d months, opening on %s", len(recaps), selected)
+    return recap_tab.recap_section_html(recaps, selected)
+
+
 def main() -> None:
     """Build the dashboard HTML and write it to ``public/index.html``."""
     logger.info("Building dashboard")
@@ -180,6 +247,17 @@ def main() -> None:
         int(strength_sets["settled"].sum()) if not strength_sets.empty else 0,
     )
 
+    recap_html = _recap_html(
+        supabase,
+        activities,
+        runs,
+        query.fetch_training_zones(supabase),
+        strength_sets,
+        body,
+        hrv_series,
+        today,
+    )
+
     fig = render.build_figure(load_series, hrv_series)
     zones_fig = zones.build_zone_comparison_figure()
     pace_fig = zones.build_pace_comparison_figure()
@@ -194,6 +272,7 @@ def main() -> None:
         body_html=body_html,
         strength_html=strength_html,
         source_status=source_status,
+        recap_html=recap_html,
     )
 
     _OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)

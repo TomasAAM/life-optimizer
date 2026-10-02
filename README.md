@@ -71,6 +71,42 @@ current one: km planned vs run, key sessions (anything hard plus runs of 14 km o
 more), gym sessions, and the latest sessions that weren't fully done. The current
 week counts only sessions already due.
 
+## Monthly recap
+
+The **Recap** tab shows each month as Instagram-style story cards, styled as a
+printed race poster (paper, black ink, one orange). They're built from the same
+data and rules as the other tabs (`dashboard/recap_metrics.py` for the numbers,
+`dashboard/recap_tab.py` for the cards):
+
+1. **Cover:** km, hours, active days and sessions, with a calendar where every
+   session type is visible. A run is an ink square with its km, Hyrox is orange,
+   gym is hatched, and a ride or hike is outlined and labelled. A run day that
+   also had gym or Hyrox gets a labelled band. The legend counts sessions by type.
+2. **Running:** week-by-week km against the plan, intensity split by average
+   HR, longest run and outdoor easy pace.
+3. **Strength:** sessions, tonnage, and the heaviest settled lifts with PRs
+   (heavier than any earlier month).
+4. **Body:** weight trend, overnight HRV against Garmin's baseline, and
+   training load.
+5. **In short:** up to four lines from fixed rules (including key sessions done
+   against the plan), plus the countdown to the next race.
+
+How each number is derived is listed under the viewer ("How these numbers are
+made"), not printed on the images.
+
+Cards with no data for a month are skipped. The tab opens on the last finished
+month, and the month in progress appears as "so far". It is compared with the
+same number of days of the month before, not the whole month.
+
+Tap the right side of a card for the next one, tap the left side to go back, and
+hold to pause. Cards auto-advance every 6 seconds, except when the browser asks
+for reduced motion. **Share card** renders the card on screen as a 1080 × 1920
+PNG and opens the phone's share sheet. Where the browser can't share files, it
+downloads the image instead. **Save all** downloads every card of the month.
+The image is rendered in the browser by
+[html-to-image](https://github.com/bubkoo/html-to-image), loaded from jsDelivr
+and pinned to 1.11.13.
+
 ## Setup
 
 ### 1. Clone the repo

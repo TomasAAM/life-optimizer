@@ -16,7 +16,7 @@ import plotly.graph_objects as go
 from plotly.offline import get_plotlyjs_version
 from plotly.subplots import make_subplots
 
-from dashboard import styles, theme, zones
+from dashboard import recap_tab, styles, theme, zones
 from dashboard.metrics import CTL_WARMUP_DAYS, ReadinessSnapshot
 from plan.pace import seconds_to_pace
 
@@ -812,6 +812,7 @@ def render_html(
     body_html: str = "",
     strength_html: str = "",
     source_status: pd.DataFrame | None = None,
+    recap_html: str = "",
 ) -> str:
     """Assemble the full HTML document.
 
@@ -846,6 +847,10 @@ def render_html(
     source_status : pandas.DataFrame or None, optional
         Latest persisted ingestion outcomes. Missing status renders an explicit
         freshness warning rather than silently implying current data.
+    recap_html : str, optional
+        Pre-rendered monthly-recap fragment from
+        :func:`dashboard.recap_tab.recap_section_html`; when empty the tab
+        shows a placeholder.
 
     Returns
     -------
@@ -869,8 +874,12 @@ def render_html(
         "<h2>Strength</h2><div class='panel'><p>No exercise data "
         "available yet.</p></div>"
     )
-    stylesheet = styles.stylesheet()
-    page_script = _page_script()
+    recap_section = recap_html or (
+        "<h2>Monthly recap</h2><div class='panel'><p>No activities "
+        "available yet.</p></div>"
+    )
+    stylesheet = styles.stylesheet() + recap_tab.RECAP_CSS
+    page_script = _page_script() + recap_tab.recap_script()
     fonts_href = theme.GOOGLE_FONTS_HREF
     source_health = _source_health_html(
         source_status if source_status is not None else pd.DataFrame()
@@ -885,8 +894,10 @@ def render_html(
 <title>Training Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="{fonts_href}">
+<link rel="stylesheet" href="{fonts_href}" crossorigin>
+<link rel="stylesheet" href="{recap_tab.RECAP_FONTS_HREF}" crossorigin>
 <script src="https://cdn.plot.ly/plotly-{get_plotlyjs_version()}.min.js" charset="utf-8"></script>
+<script src="{recap_tab.HTML_TO_IMAGE_SRC}" defer></script>
 <style>{stylesheet}</style>
 </head>
 <body class="intro">
@@ -900,6 +911,7 @@ def render_html(
   <div class="tabs">
     <button class="tab-btn active" data-tab="plan">Training plan</button>
     <button class="tab-btn" data-tab="metrics">Metrics</button>
+    <button class="tab-btn" data-tab="recap">Recap</button>
     <button class="tab-btn" data-tab="strength">Strength</button>
     <button class="tab-btn" data-tab="body">Body</button>
     <button class="tab-btn" data-tab="training">Training load</button>
@@ -912,6 +924,10 @@ def render_html(
 
   <div class="tab-panel" id="tab-metrics">
     {metrics_section}
+  </div>
+
+  <div class="tab-panel" id="tab-recap">
+    {recap_section}
   </div>
 
   <div class="tab-panel" id="tab-strength">
