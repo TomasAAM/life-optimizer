@@ -47,6 +47,17 @@ from plan import config
 # stored because no reading of this data uses them.
 CONFIRMED_PROBABILITY_PCT = 100.0
 
+# Sets Garmin reported as certain that are certainly something else, keyed by
+# (activity_id, set_index). Each is demoted to unidentified: its load still
+# counts toward tonnage, but the lift is never named. Renaming the set in Garmin
+# Connect fixes it at the source; this list is for the ones not yet renamed.
+# - 2026-09-01: three "weighted bench dip" sets at 112 kg x 8 closing a
+#   squat-and-deadlift session. No bench dip carries 112 kg; the 2026-08-25
+#   session ends the same way with a 110 kg x 8 hip thrust.
+MISLABELLED_SETS: frozenset[tuple[int, int]] = frozenset(
+    {(24195740246, 14), (24195740246, 16), (24195740246, 18)}
+)
+
 # Garmin's own category for reps it recorded but could not attribute to a
 # movement. Counted in totals, never named.
 UNIDENTIFIED_CATEGORY = "UNKNOWN"
@@ -359,6 +370,11 @@ def prepare_sets(sets: pd.DataFrame, activities: pd.DataFrame) -> pd.DataFrame:
     # Not >= : Garmin reports 99.6 on a set it flatly failed to identify, so a
     # threshold below 100 would promote the clearest non-answers in the log.
     out["settled"] = out["probability_pct"] == CONFIRMED_PROBABILITY_PCT
+    mislabelled = [
+        (int(a), int(i)) in MISLABELLED_SETS
+        for a, i in zip(out["activity_id"], out["set_index"])
+    ]
+    out.loc[mislabelled, "settled"] = False
 
     return out.sort_values(["day", "set_index"]).reset_index(drop=True)[columns]
 

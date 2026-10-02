@@ -111,6 +111,22 @@ class TestPrepareSets:
         ])
         assert list(sm.prepare_sets(raw, activities)["settled"]) == [True, False, False]
 
+    def test_a_known_mislabelled_set_is_never_settled(
+        self, activities: pd.DataFrame, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A certain label on an impossible lift is demoted, but its load stays."""
+        monkeypatch.setattr(sm, "MISLABELLED_SETS", frozenset({(3, 1)}))
+        raw = _sets([
+            {"activity_id": 3, "set_index": 0},
+            {"activity_id": 3, "set_index": 1, "weight_kg": 112.0},
+        ])
+        prepared = sm.prepare_sets(raw, activities)
+        assert list(prepared["settled"]) == [True, False]
+        assert prepared["weight_kg"].iloc[1] == 112.0
+
+    def test_the_september_bench_dips_are_listed(self) -> None:
+        assert {(24195740246, 14), (24195740246, 16), (24195740246, 18)} <= sm.MISLABELLED_SETS
+
     def test_a_set_whose_activity_is_unknown_is_dropped(
         self, activities: pd.DataFrame
     ) -> None:
