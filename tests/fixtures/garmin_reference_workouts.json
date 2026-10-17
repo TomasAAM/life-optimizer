@@ -1,0 +1,149 @@
+{
+  "_source": "Trimmed from two workouts in the athlete's Garmin Connect library (raw get_workout_by_id, 2026-10-17): a Runna interval session and a Garmin Coach stride session. Kept only the fields the contract test compares; ids, author and provider fields removed.",
+  "runna_intervals": {
+    "workoutName": "W11 Wed Intervals - 800m into 400m Intervals (10km)",
+    "sportType": {"sportTypeId": 1, "sportTypeKey": "running", "displayOrder": 1},
+    "workoutSegments": [
+      {
+        "segmentOrder": 1,
+        "sportType": {"sportTypeId": 1, "sportTypeKey": "running", "displayOrder": 1},
+        "workoutSteps": [
+          {
+            "type": "ExecutableStepDTO",
+            "stepOrder": 1,
+            "stepType": {"stepTypeId": 1, "stepTypeKey": "warmup", "displayOrder": 1},
+            "description": "2km warm up",
+            "endCondition": {"conditionTypeId": 3, "conditionTypeKey": "distance", "displayOrder": 3, "displayable": true},
+            "endConditionValue": 2000.0,
+            "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target", "displayOrder": 1}
+          },
+          {
+            "type": "ExecutableStepDTO",
+            "stepOrder": 2,
+            "stepType": {"stepTypeId": 5, "stepTypeKey": "rest", "displayOrder": 5},
+            "description": "90s rest",
+            "endCondition": {"conditionTypeId": 2, "conditionTypeKey": "time", "displayOrder": 2, "displayable": true},
+            "endConditionValue": 90.0,
+            "targetType": null
+          },
+          {
+            "type": "RepeatGroupDTO",
+            "stepOrder": 3,
+            "stepType": {"stepTypeId": 6, "stepTypeKey": "repeat", "displayOrder": 6},
+            "childStepId": 1,
+            "numberOfIterations": 4,
+            "endCondition": {"conditionTypeId": 7, "conditionTypeKey": "iterations", "displayOrder": 7, "displayable": false},
+            "endConditionValue": 4.0,
+            "smartRepeat": false,
+            "workoutSteps": [
+              {
+                "type": "ExecutableStepDTO",
+                "stepOrder": 4,
+                "stepType": {"stepTypeId": 3, "stepTypeKey": "interval", "displayOrder": 3},
+                "childStepId": 1,
+                "description": "800m at 3:50/km",
+                "endCondition": {"conditionTypeId": 3, "conditionTypeKey": "distance", "displayOrder": 3, "displayable": true},
+                "endConditionValue": 800.0,
+                "targetType": {"workoutTargetTypeId": 6, "workoutTargetTypeKey": "pace.zone", "displayOrder": 6},
+                "targetValueOne": 4.5454545,
+                "targetValueTwo": 4.1666667
+              },
+              {
+                "type": "ExecutableStepDTO",
+                "stepOrder": 5,
+                "stepType": {"stepTypeId": 5, "stepTypeKey": "rest", "displayOrder": 5},
+                "childStepId": 1,
+                "description": "90s rest",
+                "endCondition": {"conditionTypeId": 2, "conditionTypeKey": "time", "displayOrder": 2, "displayable": true},
+                "endConditionValue": 90.0,
+                "targetType": null
+              }
+            ]
+          },
+          {
+            "type": "ExecutableStepDTO",
+            "stepOrder": 6,
+            "stepType": {"stepTypeId": 2, "stepTypeKey": "cooldown", "displayOrder": 2},
+            "description": "2km cool down",
+            "endCondition": {"conditionTypeId": 3, "conditionTypeKey": "distance", "displayOrder": 3, "displayable": true},
+            "endConditionValue": 2000.0,
+            "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target", "displayOrder": 1}
+          }
+        ]
+      }
+    ]
+  },
+  "garmin_coach_strides": {
+    "workoutName": "Stride Repeats",
+    "sportType": {"sportTypeId": 1, "sportTypeKey": "running", "displayOrder": 1},
+    "workoutSegments": [
+      {
+        "segmentOrder": 1,
+        "sportType": {"sportTypeId": 1, "sportTypeKey": "running", "displayOrder": 1},
+        "workoutSteps": [
+          {
+            "type": "ExecutableStepDTO",
+            "stepOrder": 1,
+            "stepType": {"stepTypeId": 1, "stepTypeKey": "warmup", "displayOrder": 1},
+            "description": "Walk or jog lightly.",
+            "endCondition": {"conditionTypeId": 2, "conditionTypeKey": "time", "displayOrder": 2, "displayable": true},
+            "endConditionValue": 600.0,
+            "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target", "displayOrder": 1}
+          },
+          {
+            "type": "ExecutableStepDTO",
+            "stepOrder": 2,
+            "stepType": {"stepTypeId": 7, "stepTypeKey": "other", "displayOrder": 7},
+            "description": "Up next: Stride Run.",
+            "endCondition": {"conditionTypeId": 1, "conditionTypeKey": "lap.button", "displayOrder": 1, "displayable": true},
+            "endConditionValue": null,
+            "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target", "displayOrder": 1}
+          },
+          {
+            "type": "RepeatGroupDTO",
+            "stepOrder": 3,
+            "stepType": {"stepTypeId": 6, "stepTypeKey": "repeat", "displayOrder": 6},
+            "childStepId": 1,
+            "numberOfIterations": 10,
+            "endCondition": {"conditionTypeId": 7, "conditionTypeKey": "iterations", "displayOrder": 7, "displayable": false},
+            "endConditionValue": 10.0,
+            "smartRepeat": false,
+            "workoutSteps": [
+              {
+                "type": "ExecutableStepDTO",
+                "stepOrder": 4,
+                "stepType": {"stepTypeId": 3, "stepTypeKey": "interval", "displayOrder": 3},
+                "childStepId": 1,
+                "description": "Run hard. Increase cadence by moving the feet quickly.",
+                "endCondition": {"conditionTypeId": 2, "conditionTypeKey": "time", "displayOrder": 2, "displayable": true},
+                "endConditionValue": 20.0,
+                "targetType": {"workoutTargetTypeId": 3, "workoutTargetTypeKey": "cadence", "displayOrder": 3},
+                "targetValueOne": 150.0,
+                "targetValueTwo": 200.0
+              },
+              {
+                "type": "ExecutableStepDTO",
+                "stepOrder": 5,
+                "stepType": {"stepTypeId": 4, "stepTypeKey": "recovery", "displayOrder": 4},
+                "childStepId": 1,
+                "description": "Jog or walk if you need to.",
+                "endCondition": {"conditionTypeId": 2, "conditionTypeKey": "time", "displayOrder": 2, "displayable": true},
+                "endConditionValue": 45.0,
+                "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target", "displayOrder": 1}
+              }
+            ]
+          },
+          {
+            "type": "ExecutableStepDTO",
+            "stepOrder": 6,
+            "stepType": {"stepTypeId": 2, "stepTypeKey": "cooldown", "displayOrder": 2},
+            "description": "Walk or jog lightly.",
+            "endCondition": {"conditionTypeId": 2, "conditionTypeKey": "time", "displayOrder": 2, "displayable": true},
+            "endConditionValue": 600.0,
+            "targetType": {"workoutTargetTypeId": 1, "workoutTargetTypeKey": "no.target", "displayOrder": 1}
+          }
+        ]
+      }
+    ]
+  }
+}
