@@ -185,7 +185,7 @@ def build_workout(session: PlannedSession, session_date: date) -> dict[str, Any]
     -------
     dict
         A payload for ``Garmin.upload_workout``. Its description ends with a
-        ``[lod:<hash>]`` marker of the step content, so a later sync can tell
+        ``[lod:<hash>]`` marker of the workout content, so a later sync can tell
         an unchanged workout from a revised one.
 
     Raises
@@ -212,23 +212,25 @@ def build_workout(session: PlannedSession, session_date: date) -> dict[str, Any]
         flat.extend(_to_garmin_steps(step))
     garmin_steps = _number(_fold_repeats(flat))
 
-    content_hash = _hash(garmin_steps)
+    # No estimatedDurationInSecs: the session's duration_min covers the whole
+    # day, gym included on a double day, so it misstates the run. Garmin
+    # estimates from the steps itself, as it does for Runna's workouts.
+    payload: dict[str, Any] = {
+        "workoutName": session_workout_name(session, session_date),
+        "sportType": _RUNNING,
+        "workoutSegments": [
+            {"segmentOrder": 1, "sportType": _RUNNING, "workoutSteps": garmin_steps}
+        ],
+    }
+    content_hash = _hash(payload)
+
     # The prescription of a double day leads with the gym work, which never
     # reaches the watch, so describe only the running that does.
     if _drops_gym_work(session):
         summary = "; ".join(step.metric for step in steps if step.kind == "run")
     else:
         summary = session.prescription
-    payload: dict[str, Any] = {
-        "workoutName": session_workout_name(session, session_date),
-        "description": f"{summary[:_DESCRIPTION_MAX_CHARS]}\n\n[lod:{content_hash}]",
-        "sportType": _RUNNING,
-        "workoutSegments": [
-            {"segmentOrder": 1, "sportType": _RUNNING, "workoutSteps": garmin_steps}
-        ],
-    }
-    if session.duration_min:
-        payload["estimatedDurationInSecs"] = session.duration_min * 60
+    payload["description"] = f"{summary[:_DESCRIPTION_MAX_CHARS]}\n\n[lod:{content_hash}]"
     return payload
 
 
@@ -443,6 +445,10 @@ def _number(steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return numbered
 
 
-def _hash(steps: list[dict[str, Any]]) -> str:
-    """Hash the steps only, so editing the session's prose prescription never forces a re-sync."""
-    return hashlib.sha256(json.dumps(steps, sort_keys=True).encode("utf-8")).hexdigest()[:12]
+def _hash(payload: dict[str, Any]) -> str:
+    """Hash everything Garmin is sent except the description.
+
+    Rewording the session's prose never forces a re-sync, but any change to the
+    name, steps or other workout fields does.
+    """
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:12]

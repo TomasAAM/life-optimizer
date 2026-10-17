@@ -8,7 +8,7 @@ its date.
 The sync is idempotent and conservative:
 
 - A workout this tool created is named ``LOD MM-DD <title>`` and carries a hash
-  of its steps. Workouts without the prefix are never read for changes,
+  of its content. Workouts without the prefix are never read for changes,
   rescheduled or deleted.
 - An unchanged workout is skipped. A revised one is reported as stale and only
   replaced (deleted, then re-uploaded) with ``--replace``. The same goes for a

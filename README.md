@@ -99,7 +99,7 @@ python -m plan.garmin_sync --apply --replace
   the watch fields on `Step` in `plan/models.py`. A run step with only prose is
   reported as `unstructured` and not uploaded.
 - **Safety:** synced workouts are named `LOD MM-DD <title>` and carry a hash of
-  their steps. Re-running skips unchanged workouts. Changed sessions, and synced
+  their content. Re-running skips unchanged workouts. Changed sessions, and synced
   workouts whose session is gone, are only reported until `--replace` is passed.
   Workouts without the `LOD` prefix are never touched, and past dates are refused.
 

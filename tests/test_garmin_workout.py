@@ -291,3 +291,16 @@ def test_name_carries_the_sync_prefix_and_date() -> None:
     assert is_synced_workout(payload["workoutName"])
     assert not is_synced_workout("W11 Wed Intervals - 800m into 400m Intervals (10km)")
     assert not is_synced_workout(None)
+
+
+def test_no_session_time_estimate_is_sent() -> None:
+    """A double day's 116 min covers the gym too, so no estimate is sent for the run."""
+    session = _session([
+        {"kind": "strength", "metric": "OHP 3x5", "load": "62.5 kg"},
+        {"kind": "run", "metric": "8 km easy (PM)", "distance_m": 8000, "hr_max": 145},
+    ], session_type="strength", duration_min=116)
+
+    payload = build_workout(session, _DATE)
+
+    assert "estimatedDurationInSecs" not in payload
+    assert _steps_of(payload)[0]["endCondition"]["conditionTypeKey"] == "distance"
