@@ -71,6 +71,37 @@ current one: km planned vs run, key sessions (anything hard plus runs of 14 km o
 more), gym sessions, and the latest sessions that weren't fully done. The current
 week counts only sessions already due.
 
+### Sync runs to the Garmin watch
+
+`plan.garmin_sync` puts the running part of each persisted session on the Garmin
+calendar as a structured workout, so the watch guides the warm-up, reps,
+recoveries, stations and cool-down. It reads Supabase, not the JSON, so only
+persisted (reviewed) weeks reach the watch.
+
+```bash
+# Show what would be sent for the next 14 days (dry run, nothing is sent)
+python -m plan.garmin_sync
+
+# Upload and schedule
+python -m plan.garmin_sync --apply
+
+# After revising persisted sessions: replace their synced workouts
+python -m plan.garmin_sync --apply --replace
+```
+
+- **What goes on the watch:** run steps, plus stations and recoveries that sit
+  between runs (a sim). Strength steps, and stations before or after the running
+  (a gym finisher), stay off it.
+- **Targets:** easy steps alert on the `hr_max` ceiling, and fixed-pace work alerts
+  on pace. A step can set `watch_target: "hr"` for a treadmill session.
+- **Structured fields:** each run step needs `duration_s` or `distance_m`; see
+  the watch fields on `Step` in `plan/models.py`. A run step with only prose is
+  reported as `unstructured` and not uploaded.
+- **Safety:** synced workouts are named `LOD MM-DD <title>` and carry a hash of
+  their steps. Re-running skips unchanged workouts. Changed sessions, and synced
+  workouts whose session is gone, are only reported until `--replace` is passed.
+  Workouts without the `LOD` prefix are never touched, and past dates are refused.
+
 ## Monthly recap
 
 The **Recap** tab shows each month as Instagram-style story cards, styled as a
