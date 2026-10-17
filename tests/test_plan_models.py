@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from plan.models import PlannedSession
+from plan.models import PlannedSession, Step
 
 
 def _session_payload() -> dict:
@@ -70,3 +70,34 @@ def test_rest_day_may_use_legacy_text_fallback() -> None:
     session = PlannedSession.model_validate(payload)
 
     assert session.steps == []
+
+
+@pytest.mark.parametrize(
+    ("fields", "message"),
+    [
+        ({"duration_s": 480, "distance_m": 2000}, "not both"),
+        ({"pace_fast_s_per_km": 248}, "or neither"),
+        ({"pace_fast_s_per_km": 252, "pace_slow_s_per_km": 248}, "not be slower"),
+        ({"hr_min": 130}, "requires hr_max"),
+        ({"hr_min": 150, "hr_max": 145}, "must not exceed"),
+        ({"repeats": 6}, "requires duration_s or distance_m"),
+        ({"duration_s": 480, "watch_target": "pace"}, "requires a pace range"),
+        ({"duration_s": 480, "watch_target": "hr"}, "requires hr_max"),
+    ],
+)
+def test_step_rejects_contradictory_watch_fields(fields: dict, message: str) -> None:
+    """Watch fields must describe one unambiguous dose and target."""
+    with pytest.raises(ValidationError, match=message):
+        Step.model_validate({"kind": "run", "metric": "8 min threshold", **fields})
+
+
+def test_step_accepts_a_complete_threshold_rep() -> None:
+    """A fully specified rep validates, and legacy text-only steps still do."""
+    rep = Step.model_validate({
+        "kind": "run", "metric": "8 min threshold", "duration_s": 480,
+        "pace_fast_s_per_km": 248, "pace_slow_s_per_km": 252, "hr_max": 176,
+    })
+    legacy = Step.model_validate({"kind": "run", "metric": "6 km easy"})
+
+    assert rep.pace_fast_s_per_km == 248
+    assert legacy.duration_s is None and legacy.distance_m is None

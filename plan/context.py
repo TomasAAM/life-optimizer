@@ -260,15 +260,21 @@ def render_brief(bundle: BlockContext) -> str:
                 "HR/pace, recoveries, station reps/loads.",
                 "steps": [
                     {"phase": "warmup", "kind": "run", "metric": "15 min easy",
-                     "target": "Z1 HR and pace from the zone table", "load": None},
+                     "target": "Z1 HR and pace from the zone table", "load": None,
+                     "duration_s": 900, "hr_max": 145},
+                    {"phase": "warmup", "kind": "run", "metric": "4x20 s strides",
+                     "target": "relaxed-fast, walk back", "load": None,
+                     "duration_s": 20, "repeats": 4},
                     {"phase": "main", "kind": "run", "metric": "10 min at threshold",
-                     "target": "Z4 HR and pace from the zone table", "load": None},
+                     "target": "Z4 HR and pace from the zone table", "load": None,
+                     "duration_s": 600, "pace_fast_s_per_km": 248, "pace_slow_s_per_km": 252,
+                     "hr_max": 178},
                     {"phase": "main", "kind": "rest", "metric": "2:30 jog recovery",
-                     "target": "easy", "load": None},
+                     "target": "easy", "load": None, "duration_s": 150},
                     {"phase": "main", "kind": "station", "metric": "sled push 4x12.5 m",
                      "target": "then 90s walk", "load": "202 kg"},
-                    {"phase": "cooldown", "kind": "run", "metric": "10 min easy",
-                     "target": "or slower", "load": None},
+                    {"phase": "cooldown", "kind": "run", "metric": "2 km easy",
+                     "target": "or slower", "load": None, "distance_m": 2000, "hr_max": 145},
                 ],
                 "purpose": "One sentence on the training purpose.",
                 "why": "Why this session at this dose today, and why not more — tied to a "
@@ -354,6 +360,15 @@ GUARDRAILS (apply to EVERY week of the block):
     Every workout, including a trivial single-effort session, MUST have at least one `steps` entry
     so the dashboard can render its structured visual card. Only a full rest day may use `steps: []`.
     Always also fill the one-line `prescription` as a legacy fallback.
+  - WATCH FIELDS (read by `python -m plan.garmin_sync` to build the Garmin workout): every RUN step
+    MUST carry `duration_s` or `distance_m` (never both, never neither), so the watch knows when the
+    step ends. Add `pace_fast_s_per_km` + `pace_slow_s_per_km` (e.g. 4:08-4:12/km -> 248/252) for
+    fixed-pace work, `hr_max` (and optionally `hr_min`) for HR-capped work: easy steps carry the LT1
+    ceiling as `hr_max`. Pace wins when both are given; set `watch_target: "hr"` for a treadmill
+    threshold session, where watch pace is unreliable. Give jog recoveries `duration_s`. Write strides
+    as ONE step with `repeats` (e.g. 6) and the per-stride `duration_s`; the watch adds a walk-back.
+    Stations and walk rests may omit the dose and end on the lap button. A run step whose length
+    depends on earlier steps ("jog to 9 km total") must state its own distance.
   - DETAIL & CONSISTENCY: be explicit and unambiguous. State the exact number of rounds/sets/reps.
     `distance_m` and `duration_min` MUST equal the sum across the steps.
   - LOADS: give a concrete weight for every strength/station movement — station work at the Hyrox
