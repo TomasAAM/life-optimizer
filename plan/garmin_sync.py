@@ -38,7 +38,7 @@ from plan.garmin_workout import (
     has_run_steps,
     is_synced_workout,
     read_content_hash,
-    workout_name,
+    session_workout_name,
 )
 from plan.models import PlannedSession
 
@@ -234,7 +234,7 @@ def plan_actions(
     for run in runs:
         if not options.start <= run.session_date <= options.end:
             continue
-        name = workout_name(run.session_date, run.session.title)
+        name = session_workout_name(run.session, run.session_date)
         wanted_names.add(name)
         try:
             payload = build_workout(run.session, run.session_date)

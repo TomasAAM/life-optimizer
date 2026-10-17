@@ -200,6 +200,24 @@ def test_synced_workout_whose_session_is_gone_is_an_orphan() -> None:
     assert [a.kind for a in deleting] == ["delete_orphan"]
 
 
+def test_renamed_double_day_uploads_new_and_orphans_old() -> None:
+    """A double day synced under its gym-led title is replaced by its run-only name."""
+    double = _session(title="Upper Strength (AM) + Easy Run (PM)", session_type="strength", steps=[
+        {"kind": "strength", "metric": "OHP 3x5", "load": "62.5 kg"},
+        {"kind": "run", "metric": "8 km easy (PM)", "distance_m": 8000, "hr_max": 145},
+    ])
+    payload = build_workout(double, date(2026, 10, 19))
+    old = SyncedWorkout(903, "LOD 10-19 Upper Strength (AM) + Easy Run (PM)", content_hash_of(payload))
+
+    actions = plan_actions([PlannedRun(date(2026, 10, 19), double)], [old], {(903, date(2026, 10, 19))},
+                           SyncOptions(_START, replace=True))
+
+    assert [(a.kind, a.name) for a in actions] == [
+        ("upload", "LOD 10-19 Run: 8 km easy (PM)"),
+        ("delete_orphan", "LOD 10-19 Upper Strength (AM) + Easy Run (PM)"),
+    ]
+
+
 def test_synced_workouts_outside_the_window_are_ignored() -> None:
     """Earlier synced workouts are history, not orphans."""
     old = _synced_copy(_session(), date(2026, 10, 6), workout_id=902)

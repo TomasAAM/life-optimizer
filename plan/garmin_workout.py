@@ -136,6 +136,41 @@ def read_content_hash(description: str | None) -> str | None:
     return match.group(1) if match else None
 
 
+def session_workout_name(session: PlannedSession, session_date: date) -> str:
+    """Name the watch workout after what it actually contains.
+
+    A double day keeps only its run on the watch, so its gym-led title
+    ("Upper Strength + ... + Easy Run (PM)") would be misleading there. Such a
+    session is named after its first run step instead.
+
+    Parameters
+    ----------
+    session : PlannedSession
+        A session with at least one run step.
+    session_date : datetime.date
+        The day it is planned.
+
+    Returns
+    -------
+    str
+        The synced workout name.
+
+    Raises
+    ------
+    UnstructuredSessionError
+        If the session has no run steps.
+
+    Examples
+    --------
+    >>> session_workout_name(double_day, date(2026, 10, 19))  # doctest: +SKIP
+    'LOD 10-19 Run: 8 km easy (PM)'
+    """
+    if _drops_gym_work(session):
+        first_run = next(step for step in session.steps if step.kind == "run")
+        return workout_name(session_date, f"Run: {first_run.metric}")
+    return workout_name(session_date, session.title)
+
+
 def build_workout(session: PlannedSession, session_date: date) -> dict[str, Any]:
     """Map a planned session to a Garmin running-workout payload.
 
@@ -178,10 +213,15 @@ def build_workout(session: PlannedSession, session_date: date) -> dict[str, Any]
     garmin_steps = _number(_fold_repeats(flat))
 
     content_hash = _hash(garmin_steps)
-    prescription = session.prescription[:_DESCRIPTION_MAX_CHARS]
+    # The prescription of a double day leads with the gym work, which never
+    # reaches the watch, so describe only the running that does.
+    if _drops_gym_work(session):
+        summary = "; ".join(step.metric for step in steps if step.kind == "run")
+    else:
+        summary = session.prescription
     payload: dict[str, Any] = {
-        "workoutName": workout_name(session_date, session.title),
-        "description": f"{prescription}\n\n[lod:{content_hash}]",
+        "workoutName": session_workout_name(session, session_date),
+        "description": f"{summary[:_DESCRIPTION_MAX_CHARS]}\n\n[lod:{content_hash}]",
         "sportType": _RUNNING,
         "workoutSegments": [
             {"segmentOrder": 1, "sportType": _RUNNING, "workoutSteps": garmin_steps}
@@ -223,11 +263,29 @@ def _watch_steps(session: PlannedSession) -> list[Step]:
     before or after the running (a gym finisher, a strength block) fall away,
     while those between runs (a sim's stations, jog recoveries) stay.
     """
+    first, last = _run_span(session)
+    return [step for step in session.steps[first : last + 1] if step.kind in _WATCH_KINDS]
+
+
+def _run_span(session: PlannedSession) -> tuple[int, int]:
+    """Indices of the first and last run step."""
     run_positions = [i for i, step in enumerate(session.steps) if step.kind == "run"]
     if not run_positions:
         raise UnstructuredSessionError(f"'{session.title}' has no run steps.")
-    span = session.steps[run_positions[0] : run_positions[-1] + 1]
-    return [step for step in span if step.kind in _WATCH_KINDS]
+    return run_positions[0], run_positions[-1]
+
+
+def _drops_gym_work(session: PlannedSession) -> bool:
+    """Tell whether the watch leaves gym work behind.
+
+    True for any strength step, or a station outside the run span (a finisher,
+    not a sim station).
+    """
+    first, last = _run_span(session)
+    return any(
+        step.kind == "strength" or (step.kind == "station" and not first < i < last)
+        for i, step in enumerate(session.steps)
+    )
 
 
 def _to_garmin_steps(step: Step) -> list[dict[str, Any]]:

@@ -91,7 +91,8 @@ python -m plan.garmin_sync --apply --replace
 
 - **What goes on the watch:** run steps, plus stations and recoveries that sit
   between runs (a sim). Strength steps, and stations before or after the running
-  (a gym finisher), stay off it.
+  (a gym finisher), stay off it. A double day is named and described after its run
+  only (`LOD 10-19 Run: 8 km easy (PM)`), so no gym text reaches the watch.
 - **Targets:** easy steps alert on the `hr_max` ceiling, and fixed-pace work alerts
   on pace. A step can set `watch_target: "hr"` for a treadmill session.
 - **Structured fields:** each run step needs `duration_s` or `distance_m`; see

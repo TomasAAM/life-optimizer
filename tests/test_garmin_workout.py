@@ -194,12 +194,32 @@ def test_double_day_keeps_only_the_run() -> None:
         {"phase": "main", "kind": "strength", "metric": "Weighted pull-up 4x4", "load": "+12.5 kg"},
         {"phase": "main", "kind": "station", "metric": "Wall balls 5x20", "load": "9 kg"},
         {"kind": "run", "metric": "8 km easy", "distance_m": 8000, "hr_max": 145},
-    ], session_type="strength")
+    ], session_type="strength", title="Upper Strength (AM) + Easy Run (PM)",
+       prescription="AM: weighted pull-up 4x4 @ +12.5 kg; wall balls 5x20. PM: 8 km easy.")
 
-    steps = _steps_of(build_workout(session, _DATE))
+    payload = build_workout(session, _DATE)
+    steps = _steps_of(payload)
 
     assert len(steps) == 1
     assert steps[0]["description"] == "8 km easy"
+    assert payload["workoutName"] == "LOD 10-20 Run: 8 km easy"
+    assert payload["description"].startswith("8 km easy\n\n[lod:")
+    for gym_text in ("Strength", "pull-up", "Wall balls", "wall balls"):
+        assert gym_text not in payload["workoutName"] + payload["description"]
+
+
+def test_sim_keeps_its_title_and_prescription() -> None:
+    """Stations between runs are part of the watch workout, so nothing is hidden."""
+    session = _session([
+        {"kind": "run", "metric": "1 km run", "distance_m": 1000},
+        {"kind": "station", "metric": "Row 1000 m"},
+        {"kind": "run", "metric": "1 km run", "distance_m": 1000},
+    ], session_type="sim", title="Compromised Sim", prescription="Run, row, run.")
+
+    payload = build_workout(session, _DATE)
+
+    assert payload["workoutName"] == "LOD 10-20 Compromised Sim"
+    assert payload["description"].startswith("Run, row, run.")
 
 
 def test_sim_keeps_distinct_stations_between_runs() -> None:
