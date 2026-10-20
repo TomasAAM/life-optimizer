@@ -37,6 +37,22 @@ def test_phase_boundaries() -> None:
     assert phase.classify_phase(0) == "off"
 
 
+def test_short_peak_keeps_the_run_in_at_build() -> None:
+    # peak_weeks=1: only race week trims volume; 3 weeks out is still build.
+    assert phase.classify_phase(3, peak_weeks=1) == "build"
+    assert phase.classify_phase(2, peak_weeks=1) == "build"
+    assert phase.classify_phase(1, peak_weeks=1) == "peak"
+    assert phase.classify_phase(0, peak_weeks=1) == "off"
+
+
+def test_phase_for_week_passes_peak_weeks() -> None:
+    # 2026-10-26 is 3 weeks out from Saturday 2026-11-14.
+    race_day = date(2026, 11, 14)
+    assert phase.phase_for_week(date(2026, 10, 26), race_day) == ("peak", 3)
+    assert phase.phase_for_week(date(2026, 10, 26), race_day, peak_weeks=1) == ("build", 3)
+    assert phase.phase_for_week(date(2026, 11, 9), race_day, peak_weeks=1) == ("peak", 1)
+
+
 def test_next_race_picks_earliest_upcoming() -> None:
     races = (Race("hyrox", date(2026, 8, 2)), Race("hyrox", date(2026, 11, 14)))
     # Before the first race -> first race.

@@ -109,9 +109,9 @@ def _week_context(week_start: date, cfg: PlanConfig) -> WeekContext:
     """Compute the deterministic periodization metadata for a single week."""
     race = phase.next_race(week_start, cfg.races)
     if race is not None:
-        phase_name, remaining = phase.phase_for_week(week_start, race.date)
+        phase_name, remaining = phase.phase_for_week(week_start, race.date, cfg.peak_weeks)
     else:
-        phase_name, remaining = "off", 0
+        phase_name, remaining = cfg.phase_without_race, 0
     return WeekContext(
         week_start=week_start,
         phase_name=phase_name,
@@ -236,7 +236,9 @@ def render_brief(bundle: BlockContext) -> str:
                 f"Cap every easy run at HR <={int(lt1_hr)} bpm, conversational."
             )
 
-    race_line = "; ".join(f"{r.name} {r.date.isoformat()}" for r in cfg.races)
+    race_line = "; ".join(
+        f"{r.name} {r.date.isoformat()}" + (f" ({r.note})" if r.note else "") for r in cfg.races
+    )
     week_blocks = "\n".join(_format_week_plan(w, cfg) for w in bundle.weeks)
     n_weeks = len(bundle.weeks)
 

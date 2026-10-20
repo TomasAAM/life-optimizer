@@ -12,6 +12,10 @@ Phase map (by whole weeks remaining until the next race):
 * ``1..3``  peak   — highest specificity, race simulation
 * ``<= 0``  off    — no upcoming race (post-race transition / maintenance)
 
+The peak window is ``PlanConfig.peak_weeks`` long (3 by default); a shorter one
+keeps more weeks in build. Weeks with no race left take
+``PlanConfig.phase_without_race`` rather than ``off``.
+
 Two sub-week refinements are layered on top and handled in session design, not as
 phases of their own:
 
@@ -68,22 +72,31 @@ def weeks_to_race(week_start: date, race_date: date) -> int:
     return math.ceil(days / 7)
 
 
-def classify_phase(weeks_remaining: int) -> str:
+def classify_phase(weeks_remaining: int, peak_weeks: int = 3) -> str:
     """Map whole weeks remaining to a periodization phase.
 
     Parameters
     ----------
     weeks_remaining : int
         Output of :func:`weeks_to_race`, or 0 when no race is upcoming.
+    peak_weeks : int, default 3
+        Weeks before the race, race week included, that count as peak.
 
     Returns
     -------
     str
         One of ``base``, ``build``, ``peak``, ``off``.
+
+    Examples
+    --------
+    >>> classify_phase(3)
+    'peak'
+    >>> classify_phase(3, peak_weeks=1)
+    'build'
     """
     if weeks_remaining <= 0:
         return "off"
-    if weeks_remaining <= 3:
+    if weeks_remaining <= peak_weeks:
         return "peak"
     if weeks_remaining <= 8:
         return "build"
@@ -112,7 +125,7 @@ def next_race(week_start: date, races: tuple[Race, ...]) -> Race | None:
     return upcoming[0] if upcoming else None
 
 
-def phase_for_week(week_start: date, race_date: date) -> tuple[str, int]:
+def phase_for_week(week_start: date, race_date: date, peak_weeks: int = 3) -> tuple[str, int]:
     """Return the phase and weeks-remaining for a plan week against one race.
 
     Parameters
@@ -121,6 +134,8 @@ def phase_for_week(week_start: date, race_date: date) -> tuple[str, int]:
         Monday of the plan week.
     race_date : datetime.date
         Date of the reference race.
+    peak_weeks : int, default 3
+        Weeks before the race, race week included, that count as peak.
 
     Returns
     -------
@@ -128,7 +143,7 @@ def phase_for_week(week_start: date, race_date: date) -> tuple[str, int]:
         The phase label and the whole weeks remaining until the race.
     """
     remaining = weeks_to_race(week_start, race_date)
-    return classify_phase(remaining), remaining
+    return classify_phase(remaining, peak_weeks), remaining
 
 
 def is_race_week(week_start: date, race: Race | None) -> bool:

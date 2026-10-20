@@ -22,10 +22,14 @@ class Race:
     date : datetime.date
         Race day. The periodization phase for any week is computed from the next
         race on or after that week.
+    note : str
+        Format details the generator should plan around (e.g. a doubles race
+        where partners split the stations). Empty for a standard solo race.
     """
 
     name: str
     date: date
+    note: str = ""
 
 
 @dataclass(frozen=True)
@@ -79,6 +83,12 @@ class PlanConfig:
         This is the single knob that sets the ceiling for the entire macrocycle —
         the phase multipliers only redistribute around it, they never grow it, so
         a volume ramp has to be driven by raising this value block over block.
+    peak_weeks : int
+        How many weeks before a race (race week included) count as peak, where
+        volume trims to the peak multiplier. Earlier weeks stay in build.
+    phase_without_race : str
+        The phase for weeks with no race left on the calendar: ``"base"`` holds
+        base volume until a new race is added, ``"off"`` cuts to maintenance.
     """
 
     races: tuple[Race, ...]
@@ -95,6 +105,8 @@ class PlanConfig:
     goal_weighting: str
     gym_access: str
     base_weekly_km: float
+    peak_weeks: int = 3
+    phase_without_race: str = "base"
 
 
 # The eight Hyrox stations, in race order, the generator draws functional work from.
