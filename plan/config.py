@@ -187,16 +187,23 @@ STRENGTH_TEMPLATE = (
 )
 
 
-# Race calendar: two Hyrox races (2026-08-02, then 2026-12-13) plus a standing
-# 21k. Seven movement days/week (4 runs + 2 strength + active recovery), long run
-# Saturday. Sunday is deliberately active recovery rather than a full rest day.
-# Blocks span 4 weeks; a race week freshens over its final 3 days; the week after
-# a race opens with a single recovery day, then trains through. Add/edit races to
-# re-point the whole engine — no other change needed.
+# Race calendar: Hyrox 2026-08-02, then the Hybrid Monkey VI simulator on
+# 2026-11-14 (the 2026-12-13 Hyrox was cancelled), plus a standing 21k. Seven
+# movement days/week (4 runs + 2 strength + active recovery), long run Saturday.
+# Sunday is deliberately active recovery rather than a full rest day. Blocks span
+# 4 weeks; a race week freshens over its final 3 days; the week after a race opens
+# with a single recovery day, then trains through. Add/edit races to re-point the
+# whole engine — no other change needed.
 DEFAULT_CONFIG = PlanConfig(
     races=(
         Race(name="hyrox", date=date(2026, 8, 2)),
-        Race(name="hyrox", date=date(2026, 12, 13)),
+        Race(
+            name="hyrox",
+            date=date(2026, 11, 14),
+            note="Hybrid Monkey VI, La Reina: a HYROX simulator raced as mixed doubles "
+            "Open with the athlete's sister. Partners run each 1 km together and split the "
+            "stations, so station efforts are shorter and harder with partner rest",
+        ),
     ),
     block_weeks=4,
     pre_race_freshen_days=3,
@@ -210,9 +217,14 @@ DEFAULT_CONFIG = PlanConfig(
     secondary_goal="21k",
     goal_weighting="race_priority",
     gym_access="full, mornings only",
-    # Raised 53 -> 62 on 2026-08-08 for the Dec 13 macrocycle. Running is the gap
+    # Raised 53 -> 62 on 2026-08-08 for the (since cancelled) Dec 13 macrocycle. Running is the gap
     # to the Pro field and the old value capped the whole cycle near 61 km, below
     # the ~65 km the goal needs. Athlete chose the aggressive step over a phased
     # ramp; he self-regulates on the day, which is the only check on overshoot.
     base_weekly_km=62.0,
+    # Full volume into the 11-14 race: only race week is peak, the 3-day freshen
+    # does the rest. Chosen 2026-10-20 to match the err-high bias.
+    peak_weeks=1,
+    # No race is booked after 11-14: hold base volume until one is added.
+    phase_without_race="base",
 )

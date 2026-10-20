@@ -1,6 +1,7 @@
 # Training methodology & evidence base
 
-This plan trains a **hybrid endurance athlete** — peaking for **Hyrox (2026-12-13)**, with a
+This plan trains a **hybrid endurance athlete** — peaking for the **Hybrid Monkey VI Hyrox simulator (2026-11-14, mixed doubles Open)**
+after the 2026-12-13 Hyrox was cancelled, then holding a base block until the next race, with a
 standing **half-marathon (21k)** as aerobic support; Hyrox has race priority. It leans on the deep
 hybrid/concurrent-training, endurance, and strength literature rather than the thin Hyrox-specific
 research, and is individualized to a field-anchored LT2 (see BENCHMARKS.md), periodized toward the

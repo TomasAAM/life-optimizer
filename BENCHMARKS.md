@@ -1,7 +1,8 @@
 # Benchmarks — hybrid endurance (Hyrox + 21k)
 
-Progress-tracking battery for the macrocycle toward **Hyrox #2 (2026-12-13)**, with the
-standing 21k as aerobic support. Generation does not read Garmin recovery or
+Progress-tracking battery for the macrocycle toward the **Hybrid Monkey VI Hyrox simulator
+(2026-11-14, mixed doubles Open)**; the 2026-12-13 Hyrox was cancelled. The
+standing 21k is the aerobic support. Generation does not read Garmin recovery or
 readiness. Benchmarks close the loop the plan can't: they verify the prescription is actually moving
 fitness, so the "err high / auto-regulate by feel" approach stays honest against a measured trend.
 Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limiter or a goal.
@@ -40,7 +41,7 @@ Companion to [METHODOLOGY.md](METHODOLOGY.md) — every benchmark maps to a limi
 | Hyrox station battery (Pro load) | every ~8 wk | controlled, fresh |
 | Compromised-run pace | continuous (read from each sim) | — |
 | Bodyweight | weekly | fasted AM |
-| **Actual Hyrox race** | the event itself | **2026-12-13 = true benchmark** |
+| **Hyrox-format race** | the event itself | **2026-11-14 (doubles: running splits are the individual signal)** |
 
 ## The battery
 
@@ -84,7 +85,7 @@ Baseline these from a **controlled self-test**, not from Aug 2 (different statio
 | **Sled push / pull** | Timed over fixed distance at Pro load (push 202 kg, pull 153 kg). | — | establish | Race-specific strength-endurance at competition load. |
 | **Wall balls** | Max unbroken to 3.0 m, 9 kg. | — | establish | Shoulder/leg muscular endurance. |
 | **Compromised-run pace** | Pace held on the sim's 1k runs at a set HR. | ~4:50–4:55/km @ 150–160 bpm (current sim target) | faster @ same HR | The integrated "is my Hyrox fitness improving" signal. |
-| **Hyrox station battery / half-sim** | Standardized self-test, Pro load, controlled. | — (late Oct / early Nov) | establish | The real, repeatable Hyrox baseline that December 13 is measured against. |
+| **Hyrox station battery / half-sim** | Standardized self-test, Pro load, controlled. | — (after 2026-11-14) | establish | The real, repeatable solo Hyrox baseline; the doubles race on 11-14 halves the stations, so it can't serve as one. |
 
 ## Baseline plan
 
@@ -99,7 +100,9 @@ Baseline these from a **controlled self-test**, not from Aug 2 (different statio
 - **Late Oct / early Nov:** full-battery baseline once recovered and built — strength est-1RMs,
   the Hyrox station battery, and a race or calibrated treadmill effort only if a new running
   anchor is needed.
-- **2026-12-13:** actual Hyrox — the true competition benchmark.
+- **2026-11-14:** Hybrid Monkey VI, a Hyrox simulator in mixed doubles Open. Log overall time and the
+  1 km run splits; station splits are shared with the partner, so they don't benchmark solo station
+  fitness. (The 2026-12-13 Hyrox, previously the true competition benchmark, was cancelled.)
 
 ## Results log
 
