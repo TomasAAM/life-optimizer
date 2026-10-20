@@ -188,6 +188,37 @@ def test_strides_become_a_repeat_with_lap_button_walk_back() -> None:
     assert walk["endCondition"]["conditionTypeKey"] == "lap.button"
 
 
+def test_strides_inside_an_easy_run_keep_the_cap_only_before_them() -> None:
+    """A split easy run alerts at 145 bpm first, then goes quiet for the strides."""
+    stride_note = "6x20 s relaxed-fast strides spread evenly, easy jog between"
+    session = _session([
+        {"kind": "run", "metric": "2 km easy", "distance_m": 2000, "hr_max": 145},
+        {"kind": "run", "metric": "4 km easy + strides", "target": stride_note, "distance_m": 4000},
+    ])
+
+    capped, strides = _steps_of(build_workout(session, _DATE))
+
+    assert capped["targetType"]["workoutTargetTypeKey"] == "heart.rate.zone"
+    assert capped["targetValueTwo"] == 145.0
+    assert strides["type"] == "ExecutableStepDTO"
+    assert strides["targetType"]["workoutTargetTypeKey"] == "no.target"
+    assert strides["endConditionValue"] == 4000.0
+    assert stride_note in strides["description"]
+
+
+def test_cooldown_without_a_ceiling_has_no_hr_alert() -> None:
+    """A post-threshold cooldown carries no target, so walking to recover never alerts."""
+    steps = _threshold_steps()
+    steps[-1] = {"phase": "cooldown", "kind": "run", "metric": "12 min easy",
+                 "target": "walk until HR is under 145, then jog easy", "duration_s": 720}
+
+    cooldown = _steps_of(build_workout(_session(steps), _DATE))[-1]
+
+    assert cooldown["stepType"]["stepTypeKey"] == "cooldown"
+    assert cooldown["targetType"]["workoutTargetTypeKey"] == "no.target"
+    assert "walk until HR is under 145" in cooldown["description"]
+
+
 def test_double_day_keeps_only_the_run() -> None:
     """Strength and an AM station finisher before the PM run stay off the watch."""
     session = _session([

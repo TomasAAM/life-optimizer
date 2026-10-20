@@ -259,12 +259,13 @@ def render_brief(bundle: BlockContext) -> str:
                 "prescription": "Full detail (one-line fallback): intervals, target zone "
                 "HR/pace, recoveries, station reps/loads.",
                 "steps": [
-                    {"phase": "warmup", "kind": "run", "metric": "15 min easy",
+                    {"phase": "warmup", "kind": "run", "metric": "10 min easy",
                      "target": "Z1 HR and pace from the zone table", "load": None,
-                     "duration_s": 900, "hr_max": 145},
-                    {"phase": "warmup", "kind": "run", "metric": "4x20 s strides",
-                     "target": "relaxed-fast, walk back", "load": None,
-                     "duration_s": 20, "repeats": 4},
+                     "duration_s": 600, "hr_max": 145},
+                    {"phase": "warmup", "kind": "run", "metric": "5 min easy + 4x20 s strides",
+                     "target": "4x20 s relaxed-fast strides spread evenly, easy jog between "
+                     "(no walking); HR <=145 outside the strides", "load": None,
+                     "duration_s": 300},
                     {"phase": "main", "kind": "run", "metric": "10 min at threshold",
                      "target": "Z4 HR and pace from the zone table", "load": None,
                      "duration_s": 600, "pace_fast_s_per_km": 248, "pace_slow_s_per_km": 252,
@@ -274,7 +275,8 @@ def render_brief(bundle: BlockContext) -> str:
                     {"phase": "main", "kind": "station", "metric": "sled push 4x12.5 m",
                      "target": "then 90s walk", "load": "202 kg"},
                     {"phase": "cooldown", "kind": "run", "metric": "2 km easy",
-                     "target": "or slower", "load": None, "distance_m": 2000, "hr_max": 145},
+                     "target": "walk until HR is under 145, then jog easy", "load": None,
+                     "distance_m": 2000},
                 ],
                 "purpose": "One sentence on the training purpose.",
                 "why": "Why this session at this dose today, and why not more — tied to a "
@@ -365,8 +367,15 @@ GUARDRAILS (apply to EVERY week of the block):
     step ends. Add `pace_fast_s_per_km` + `pace_slow_s_per_km` (e.g. 4:08-4:12/km -> 248/252) for
     fixed-pace work, `hr_max` (and optionally `hr_min`) for HR-capped work: easy steps carry the LT1
     ceiling as `hr_max`. Pace wins when both are given; set `watch_target: "hr"` for a treadmill
-    threshold session, where watch pace is unreliable. Give jog recoveries `duration_s`. Write strides
-    as ONE step with `repeats` (e.g. 6) and the per-stride `duration_s`; the watch adds a walk-back.
+    threshold session, where watch pace is unreliable. Give jog recoveries `duration_s`.
+    STRIDES happen INSIDE the run, never as their own step at the end: split the easy run (or warm-up)
+    into two run steps of the same phase. The first part carries `hr_max` 145 (about the first third:
+    e.g. 2 km of a 6 km run, 10 min of a 15 min warm-up); the second part carries NO `hr_max`, since a
+    stride lifts HR past the cap and the watch would alert on every one, and its `target` holds the
+    stride instruction, e.g. "6x20 s relaxed-fast strides spread evenly, easy jog between (no
+    walking); HR <=145 outside the strides". Do not use `repeats` for strides.
+    A COOLDOWN after threshold, a race or pace work carries NO `hr_max`: HR is still far above the cap,
+    so the target reads "walk until HR is under 145, then jog easy".
     Stations and walk rests may omit the dose and end on the lap button. A run step whose length
     depends on earlier steps ("jog to 9 km total") must state its own distance.
   - DETAIL & CONSISTENCY: be explicit and unambiguous. State the exact number of rounds/sets/reps.
