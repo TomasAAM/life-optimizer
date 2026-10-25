@@ -239,6 +239,30 @@ def test_double_day_keeps_only_the_run() -> None:
         assert gym_text not in payload["workoutName"] + payload["description"]
 
 
+def test_double_day_split_for_strides_is_named_for_its_total_distance() -> None:
+    """A PM run split into a capped part and a strides part is named for the whole run."""
+    session = _session([
+        {"phase": "main", "kind": "strength", "metric": "Weighted pull-up 5x3", "load": "+17.5 kg"},
+        {"kind": "run", "metric": "3 km easy (PM)", "distance_m": 3000, "hr_max": 145},
+        {"kind": "run", "metric": "6 km easy (PM) + 6x20 s strides", "distance_m": 6000},
+    ], session_type="run", title="Upper Strength (AM) + Easy Run (PM)",
+       prescription="AM: weighted pull-up 5x3. PM: 9 km easy with strides.")
+
+    assert build_workout(session, _DATE)["workoutName"] == "LOD 10-20 Run: 9 km easy (PM)"
+
+
+def test_double_day_with_a_timed_run_step_keeps_the_first_label() -> None:
+    """A step without a distance has nothing to add, so the first run step names the workout."""
+    session = _session([
+        {"phase": "main", "kind": "strength", "metric": "Back squat 4x3", "load": "115 kg"},
+        {"kind": "run", "metric": "20 min easy (PM)", "duration_s": 1200, "hr_max": 145},
+        {"kind": "run", "metric": "3 km easy + strides", "distance_m": 3000},
+    ], session_type="strength", title="Lower (AM) + Easy Run (PM)",
+       prescription="AM: back squat 4x3. PM: easy run with strides.")
+
+    assert build_workout(session, _DATE)["workoutName"] == "LOD 10-20 Run: 20 min easy (PM)"
+
+
 def test_sim_keeps_its_title_and_prescription() -> None:
     """Stations between runs are part of the watch workout, so nothing is hidden."""
     session = _session([

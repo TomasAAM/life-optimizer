@@ -37,6 +37,9 @@ _DESCRIPTION_MAX_CHARS = 900
 
 _HASH_MARKER = re.compile(r"\[lod:([0-9a-f]{12})\]")
 
+# The distance a run step's metric opens with, e.g. "3 km" in "3 km easy (PM)".
+_LEADING_KM = re.compile(r"^\d+(?:\.\d+)?\s*km\b")
+
 _RUNNING = {"sportTypeId": 1, "sportTypeKey": "running", "displayOrder": 1}
 
 _STEP_TYPES = {
@@ -141,7 +144,10 @@ def session_workout_name(session: PlannedSession, session_date: date) -> str:
 
     A double day keeps only its run on the watch, so its gym-led title
     ("Upper Strength + ... + Easy Run (PM)") would be misleading there. Such a
-    session is named after its first run step instead.
+    session is named after its run instead: the first run step's label, carrying
+    the total distance when every run step ends on distance. A run split in two
+    for strides (3 km capped, then 6 km with strides) is therefore named for its
+    9 km, not for its first 3.
 
     Parameters
     ----------
@@ -166,9 +172,24 @@ def session_workout_name(session: PlannedSession, session_date: date) -> str:
     'LOD 10-19 Run: 8 km easy (PM)'
     """
     if _drops_gym_work(session):
-        first_run = next(step for step in session.steps if step.kind == "run")
-        return workout_name(session_date, f"Run: {first_run.metric}")
+        return workout_name(session_date, f"Run: {_run_label(session)}")
     return workout_name(session_date, session.title)
+
+
+def _run_label(session: PlannedSession) -> str:
+    """Label a double day's run, with its total distance when every step gives one.
+
+    A time-based step has no distance to add, so any such step keeps the first
+    run step's label unchanged.
+    """
+    runs = [step for step in session.steps if step.kind == "run"]
+    first = runs[0].metric
+    if len(runs) == 1 or any(step.distance_m is None for step in runs):
+        return first
+    total = f"{sum(step.distance_m for step in runs) / 1000:g} km"
+    if _LEADING_KM.match(first):
+        return _LEADING_KM.sub(total, first, count=1)
+    return total
 
 
 def build_workout(session: PlannedSession, session_date: date) -> dict[str, Any]:
