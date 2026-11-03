@@ -5,7 +5,10 @@ the next race — no model involved, so it is fully reproducible and
 unit-testable. The generator uses the phase to bias the week's structure and the
 weekly running-volume target.
 
-Phase map (by whole weeks remaining until the next race):
+Only ``"A"``-priority races drive periodization; ``"B"`` races are trained through
+and surface in the brief via :func:`b_races_in_week`.
+
+Phase map (by whole weeks remaining until the next A race):
 
 * ``>= 9``  base   — aerobic volume, build the engine
 * ``4..8``  build  — threshold + race-specific intensity
@@ -104,10 +107,11 @@ def classify_phase(weeks_remaining: int, peak_weeks: int = 3) -> str:
 
 
 def next_race(week_start: date, races: tuple[Race, ...]) -> Race | None:
-    """Return the next race on or after a plan week.
+    """Return the next A race on or after a plan week.
 
     A race whose day falls inside the plan week counts as upcoming for that week
-    (it is that week's race). Weeks after the final race return ``None``.
+    (it is that week's race). Weeks after the final A race return ``None``.
+    B races are ignored: they never set the phase.
 
     Parameters
     ----------
@@ -119,9 +123,12 @@ def next_race(week_start: date, races: tuple[Race, ...]) -> Race | None:
     Returns
     -------
     Race or None
-        The earliest race with ``date >= week_start``, or ``None`` if none remain.
+        The earliest A race with ``date >= week_start``, or ``None`` if none remain.
     """
-    upcoming = sorted((r for r in races if r.date >= week_start), key=lambda r: r.date)
+    upcoming = sorted(
+        (r for r in races if r.priority == "A" and r.date >= week_start),
+        key=lambda r: r.date,
+    )
     return upcoming[0] if upcoming else None
 
 
@@ -167,7 +174,7 @@ def is_race_week(week_start: date, race: Race | None) -> bool:
 
 
 def is_post_race_recovery_week(week_start: date, races: tuple[Race, ...]) -> bool:
-    """True when a race occurred in the seven days before this plan week.
+    """True when an A race occurred in the seven days before this plan week.
 
     Such a week opens with a short recovery block (see
     :attr:`plan.config.PlanConfig.post_race_recovery_days`) before normal training
@@ -183,10 +190,42 @@ def is_post_race_recovery_week(week_start: date, races: tuple[Race, ...]) -> boo
     Returns
     -------
     bool
-        Whether any race day fell in the seven days immediately before this week.
+        Whether any A race day fell in the seven days immediately before this week.
     """
     prior_week_start = week_start - timedelta(days=7)
-    return any(prior_week_start <= r.date < week_start for r in races)
+    return any(
+        r.priority == "A" and prior_week_start <= r.date < week_start for r in races
+    )
+
+
+def b_races_in_week(week_start: date, races: tuple[Race, ...]) -> tuple[Race, ...]:
+    """Return the B races that fall within the seven days of a plan week.
+
+    Parameters
+    ----------
+    week_start : datetime.date
+        Monday of the plan week.
+    races : tuple of Race
+        The race calendar.
+
+    Returns
+    -------
+    tuple of Race
+        B races dated Monday..Sunday of this week, earliest first.
+
+    Examples
+    --------
+    >>> five_k = Race("5k", date(2026, 11, 8), priority="B")
+    >>> b_races_in_week(date(2026, 11, 2), (five_k,)) == (five_k,)
+    True
+    """
+    week_end = week_start + timedelta(days=6)
+    return tuple(
+        sorted(
+            (r for r in races if r.priority == "B" and week_start <= r.date <= week_end),
+            key=lambda r: r.date,
+        )
+    )
 
 
 def weekly_km_target(base_weekly_km: float, phase: str) -> tuple[float, float]:

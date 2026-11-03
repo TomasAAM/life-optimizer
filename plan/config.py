@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -25,11 +26,18 @@ class Race:
     note : str
         Format details the generator should plan around (e.g. a doubles race
         where partners split the stations). Empty for a standard solo race.
+    priority : {"A", "B"}, default "A"
+        ``"A"`` races drive periodization: the phase, the race-week freshen and
+        the post-race recovery day. ``"B"`` races are trained through. They
+        appear in the generation brief so the race day and the days around it
+        are planned, but they shift no phase, trigger no freshen and open no
+        recovery block.
     """
 
     name: str
     date: date
     note: str = ""
+    priority: Literal["A", "B"] = "A"
 
 
 @dataclass(frozen=True)

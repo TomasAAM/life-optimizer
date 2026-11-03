@@ -36,6 +36,7 @@ from plan.config import (
     STRENGTH_LIBRARY,
     STRENGTH_TEMPLATE,
     PlanConfig,
+    Race,
 )
 from plan.pace import seconds_to_pace
 
@@ -66,9 +67,11 @@ class WeekContext:
     is_race_week : bool
         Whether the next race falls within this week.
     is_post_race_recovery : bool
-        Whether a race fell in the seven days before this week.
+        Whether an A race fell in the seven days before this week.
     weekly_km_band : tuple of float
         Phase-scaled weekly running-volume target (km).
+    b_races : tuple of Race
+        B races inside this week, which are trained through.
     """
 
     week_start: date
@@ -79,6 +82,7 @@ class WeekContext:
     is_race_week: bool
     is_post_race_recovery: bool
     weekly_km_band: tuple[float, float]
+    b_races: tuple[Race, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -121,6 +125,7 @@ def _week_context(week_start: date, cfg: PlanConfig) -> WeekContext:
         is_race_week=phase.is_race_week(week_start, race),
         is_post_race_recovery=phase.is_post_race_recovery_week(week_start, cfg.races),
         weekly_km_band=phase.weekly_km_target(cfg.base_weekly_km, phase_name),
+        b_races=phase.b_races_in_week(week_start, cfg.races),
     )
 
 
@@ -198,6 +203,13 @@ def _format_week_plan(w: WeekContext, cfg: PlanConfig) -> str:
             f"early, then FRESHEN the final {cfg.pre_race_freshen_days} days — cut volume, keep "
             f"a short race-pace opener, no heavy/exhausting work. Do NOT taper the whole week."
         )
+    for b in w.b_races:
+        header += (
+            f"\n    >> B RACE: {b.name} on {b.date.strftime('%A %d %b')}"
+            + (f" ({b.note})" if b.note else "")
+            + ". Make it the week's key session with easy days either side. No freshen, "
+            "no phase change."
+        )
     if w.is_post_race_recovery:
         header += (
             f"\n    >> POST-RACE: open with {cfg.post_race_recovery_days} easy recovery day(s) "
@@ -237,7 +249,8 @@ def render_brief(bundle: BlockContext) -> str:
             )
 
     race_line = "; ".join(
-        f"{r.name} {r.date.isoformat()}" + (f" ({r.note})" if r.note else "") for r in cfg.races
+        f"{r.name} {r.date.isoformat()} [{r.priority}]" + (f" ({r.note})" if r.note else "")
+        for r in cfg.races
     )
     week_blocks = "\n".join(_format_week_plan(w, cfg) for w in bundle.weeks)
     n_weeks = len(bundle.weeks)

@@ -87,6 +87,28 @@ def test_is_post_race_recovery_week() -> None:
     assert phase.is_post_race_recovery_week(date(2026, 8, 10), races) is False
 
 
+_HYROX_A = Race("hyrox", date(2026, 11, 14))
+_FIVE_K_B = Race("5k", date(2026, 11, 8), priority="B")
+
+
+def test_next_race_skips_b_races() -> None:
+    races = (_FIVE_K_B, _HYROX_A)
+    # The 5k is sooner, but only the A race sets the phase.
+    assert phase.next_race(date(2026, 11, 2), races) == _HYROX_A
+
+
+def test_b_race_opens_no_recovery_week() -> None:
+    assert phase.is_post_race_recovery_week(date(2026, 11, 9), (_FIVE_K_B,)) is False
+    assert phase.is_post_race_recovery_week(date(2026, 11, 16), (_HYROX_A,)) is True
+
+
+def test_b_races_in_week_only_returns_b_races_inside_the_week() -> None:
+    races = (_FIVE_K_B, _HYROX_A)
+    assert phase.b_races_in_week(date(2026, 11, 2), races) == (_FIVE_K_B,)
+    # The A race's own week lists no B race.
+    assert phase.b_races_in_week(date(2026, 11, 9), races) == ()
+
+
 def test_weekly_km_target_holds_base_but_off_cuts() -> None:
     base_low, base_high = phase.weekly_km_target(50.0, "base")
     peak_low, peak_high = phase.weekly_km_target(50.0, "peak")
