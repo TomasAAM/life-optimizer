@@ -195,13 +195,14 @@ STRENGTH_TEMPLATE = (
 )
 
 
-# Race calendar: Hyrox 2026-08-02, then the Hybrid Monkey VI simulator on
-# 2026-11-14 (the 2026-12-13 Hyrox was cancelled), plus a standing 21k. Seven
-# movement days/week (4 runs + 2 strength + active recovery), long run Saturday.
-# Sunday is deliberately active recovery rather than a full rest day. Blocks span
-# 4 weeks; a race week freshens over its final 3 days; the week after a race opens
-# with a single recovery day, then trains through. Add/edit races to re-point the
-# whole engine — no other change needed.
+# Race calendar: Hyrox 2026-08-02, the Hybrid Monkey VI simulator on 2026-11-14
+# (the 2026-12-13 Hyrox was cancelled), a B-priority 5k six days before it and a
+# 10k eight days after it, plus a standing 21k. Seven movement days/week (4 runs +
+# 2 strength + active recovery), long run Saturday. Sunday is deliberately active
+# recovery rather than a full rest day. Blocks span 4 weeks; an A race's week
+# freshens over its final 3 days; the week after an A race opens with a single
+# recovery day, then trains through. B races are trained through. Add/edit races
+# to re-point the whole engine — no other change needed.
 DEFAULT_CONFIG = PlanConfig(
     races=(
         Race(name="hyrox", date=date(2026, 8, 2)),
@@ -211,6 +212,19 @@ DEFAULT_CONFIG = PlanConfig(
             note="Hybrid Monkey VI, La Reina: a HYROX simulator raced as mixed doubles "
             "Open with the athlete's sister. Partners run each 1 km together and split the "
             "stations, so station efforts are shorter and harder with partner rest",
+        ),
+        Race(
+            name="5k",
+            date=date(2026, 11, 8),
+            note="Road 5k raced all-out six days before the doubles race. Trained "
+            "through: easy days either side, no freshen",
+            priority="B",
+        ),
+        Race(
+            name="10k",
+            date=date(2026, 11, 22),
+            note="Road 10k eight days after the doubles race. Also the next check "
+            "of the LT2 anchor, as the 2026-08-30 10k was",
         ),
     ),
     block_weeks=4,
@@ -233,6 +247,6 @@ DEFAULT_CONFIG = PlanConfig(
     # Full volume into the 11-14 race: only race week is peak, the 3-day freshen
     # does the rest. Chosen 2026-10-20 to match the err-high bias.
     peak_weeks=1,
-    # No race is booked after 11-14: hold base volume until one is added.
+    # No race is booked after the 11-22 10k: hold base volume until one is added.
     phase_without_race="base",
 )
