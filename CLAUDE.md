@@ -28,6 +28,35 @@ In every session, especially ones that touch `plan/`, `data/plan_block.json`,
   software changes need a plan approved before implementation (see the global
   instructions).
 
+## Evidence before prescription (standing rule)
+
+Every plan change goes through these checks before it is proposed (set 2026-11-03):
+
+1. **Athlete data first.** Check what Garmin, the scale and the plan history show for
+   the thing being changed.
+2. **Use the highest level of evidence that exists**, in this order: systematic
+   reviews, meta-analyses and position stands; randomised trials; single studies;
+   documented practice of elite coaches and athletes; convention; speculation. Drop a
+   level only when the higher one is missing, and say so.
+3. **Check elite practice when research is thin or missing.** Use named sources
+   (books, interviews, published training logs) and compare several coaches. Generic
+   coaching blogs count as convention. Note how well the elite context fits this
+   athlete's volume, recovery and schedule. Where research and elite practice
+   disagree, show both.
+4. **Retrieve, don't recall.** Search for every claim and cite it with a link in the
+   same answer.
+5. **Match the evidence to the claim.** State the population, duration and outcomes
+   measured (for a review, the studies it pooled), and claim only what those outcomes
+   support. A 5-week study of rugby players' 1RM and sprint says nothing about Hyrox
+   station endurance.
+6. **Grade every recommendation** with its level from point 2, next to the
+   recommendation itself.
+7. **Check logistics** before placing a session. The Hyrox zone is busy on Fridays,
+   and a Hyrox class starts at 07:00 on Thursdays. Ask when equipment or timing is
+   unknown.
+8. **Every hard session gets a cut rule** (HR, pace or pain) the athlete can apply
+   mid-session.
+
 ## Where the context lives
 
 - Wiki: `~/Google Drive/ObsidianVault/life-optimizer-dashboard/`. Read `index.md` and
