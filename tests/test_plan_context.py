@@ -123,4 +123,24 @@ def test_brief_carries_the_time_based_easy_rules() -> None:
 
     assert "EASY RUNS ARE PRESCRIBED BY TIME" in brief
     assert "EASY RUNS END ON TIME" in brief
-    assert "Cut rule: HR >=5 bpm above your usual" in brief
+    assert "Cut rule: HR 5+ bpm above usual at this speed" in brief
+
+
+def test_treadmill_easy_target_fits_the_watch_step_limit() -> None:
+    """The brief's longest easy step text must survive Garmin's 250-character cut."""
+    from plan.garmin_workout import _STEP_DESCRIPTION_MAX_CHARS
+
+    hr_line = "HR <=145 governs; ~9 km is a guide, not a goal."
+    treadmill_line = (
+        "Treadmill: start ~5:50/km, slow the belt if HR >140 at 10 min. Cut rule: HR 5+ bpm "
+        "above usual at this speed = fatigue day: slow down, keep the minutes."
+    )
+    weeks = [_week_context(date(2026, 11, 16), DEFAULT_CONFIG)]
+    brief = " ".join(
+        render_brief(BlockContext(cfg=DEFAULT_CONFIG, weeks=weeks, zones=pd.DataFrame())).split()
+    )
+
+    assert hr_line in brief
+    assert treadmill_line in brief
+    step_text = f"20 min easy (PM): {hr_line} {treadmill_line}"
+    assert len(step_text) <= _STEP_DESCRIPTION_MAX_CHARS

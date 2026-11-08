@@ -459,11 +459,13 @@ GUARDRAILS (apply to EVERY week of the block):
     threshold session, where watch pace is unreliable. Give jog recoveries `duration_s`.
     EASY RUNS END ON TIME: every run step of an easy session (easy runs, the long run, recovery runs
     and the easy half of a double day) carries `duration_s`, never `distance_m`. Its metric reads in
-    minutes ("55 min easy (PM)") and its target reads "HR <=145 governs; ~9 km at the reference pace
-    is a guide, not a goal". Threshold reps, race pace, sims and quality warm-ups/cooldowns keep
-    their current dose. On the TREADMILL, the target adds: "start the belt at ~5:50/km; if HR is
-    over 140 at minute 10, slow the belt. Cut rule: HR >=5 bpm above your usual at this belt speed
-    means a fatigue day: slow down and keep the minutes, never push the pace to hold it".
+    minutes ("55 min easy (PM)") and its target reads "HR <=145 governs; ~9 km is a guide, not a
+    goal." Threshold reps, race pace, sims and quality warm-ups/cooldowns keep their current dose.
+    On the TREADMILL, the target adds, word for word: "Treadmill: start ~5:50/km, slow the belt if
+    HR >140 at 10 min. Cut rule: HR 5+ bpm above usual at this speed = fatigue day: slow down, keep
+    the minutes."
+    The watch shows each step as "metric: target" and CUTS it at 250 characters, so keep every
+    step's metric + target under 250; the cut rule must be readable mid-run.
     STRIDES happen INSIDE the run, never as their own step at the end: split the easy run (or warm-up)
     into two run steps of the same phase. The first part carries `hr_max` 145 (about the first third:
     e.g. 20 min of a 55 min run, 10 min of a 15 min warm-up); the second part carries NO `hr_max`, since a
