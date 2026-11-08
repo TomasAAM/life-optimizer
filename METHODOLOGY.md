@@ -77,6 +77,29 @@ the evidence backs the *method* (race-specific loading + heavy/explosive lifts f
 universal number.
 - Reference — official HYROX station weights by division: https://www.hycrew.com/hyrox/weights
 
+### 9. Easy runs are prescribed by time, governed by HR (2026-11-08)
+Easy runs, the long run and recovery runs end on minutes, not km. The plan is still built in km, and
+each easy run is converted at the reference easy pace: the median of the last 42 days of outdoor runs
+of at least 5 km that average at or under LT1, rounded up to 5 min. HR <=145 governs. A distance
+target holds the athlete to a pace on tired days; a time target lets the run slow down instead.
+In the log, every easy run from 2026-09-28 to 11-07 averaged at or under the cap. The failure was
+narrower: the same 9 km at the same belt pace cost 143 bpm the day after threshold, against 135 two
+days before it.
+- **Convention / mixed elite practice** — no study compares time and distance prescription for easy
+  runs in trained runners. The one direct comparison is 15 sedentary overweight adults with weight
+  and glucose outcomes, which says nothing here. https://pubmed.ncbi.nlm.nih.gov/28966715/
+  Coaching convention favours minutes for easy days and distance for workouts; elite logs record
+  both (Kipchoge: "10K easy (40 min)").
+  https://www.scienceofrunning.com/2017/09/an-analysis-of-eliud-kipchoges-training-before-his-berlin-marathon-victory.html
+- **Moderate (single study + review)** — the HR cap, not the unit, is what limits fatigue: up to
+  120 min below the first ventilatory threshold caused minimal autonomic disturbance in trained and
+  highly trained runners (Seiler, Haugen & Kuffel 2007, n=17, HRV recovery outcome).
+  https://pubmed.ncbi.nlm.nih.gov/17762370/ Autonomic recovery after low-intensity sessions takes
+  up to 24 h (Stanley et al. 2013, review). https://link.springer.com/doi/10.1007/s40279-013-0083-4
+  Neither measured musculoskeletal load or performance.
+- *Trade-off:* slower easy days now cost km. Planned-vs-done still scores the run on km (done at
+  >=85% of plan, i.e. an average up to ~6:46/km at a 5:45 reference), so a volume loss stays visible.
+
 ## How the generator uses this
 The weekly generator references these **principles** (never inventing citations) to produce a
 per-session `why` (justification + the trade-off) and a week-level `methodology` note. The sources
