@@ -8,7 +8,9 @@ known loads, and the guardrails. The agent reads this brief, writes a
 
 Recent Garmin training/recovery data is deliberately NOT part of the brief — the
 athlete self-regulates recovery on the day. Generation depends only on the race
-calendar, the measured zones, and the configured availability.
+calendar, the measured zones, the configured availability, and one figure read
+from the activity log: the reference easy pace that turns planned easy km into
+prescribed minutes.
 
 Run with ``python -m plan.context`` to print the brief.
 """
@@ -24,7 +26,7 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
-from dashboard import query
+from dashboard import activity_metrics, query
 from plan import phase
 from plan.config import (
     ATHLETE_BODYWEIGHT_KG,
@@ -38,7 +40,7 @@ from plan.config import (
     PlanConfig,
     Race,
 )
-from plan.pace import seconds_to_pace
+from plan.pace import EasyPaceReference, easy_minutes, reference_easy_pace, seconds_to_pace
 
 logger = logging.getLogger(__name__)
 
@@ -97,11 +99,15 @@ class BlockContext:
         Per-week deterministic periodization, first week first.
     zones : pandas.DataFrame
         Lactate-anchored training zones.
+    easy_pace : EasyPaceReference or None
+        Pace that converts planned easy km into prescribed minutes. ``None``
+        leaves the conversion out of the brief.
     """
 
     cfg: PlanConfig
     weeks: list[WeekContext]
     zones: pd.DataFrame
+    easy_pace: EasyPaceReference | None = None
 
     @property
     def block_start(self) -> date:
@@ -152,8 +158,48 @@ def compute_block(cfg: PlanConfig = DEFAULT_CONFIG) -> list[WeekContext]:
     ]
 
 
+def _lt1_hr(zones: pd.DataFrame) -> float | None:
+    """The LT1 HR ceiling stored with the zones, or ``None`` when unmeasured."""
+    if zones.empty or "lt1_hr" not in zones:
+        return None
+    value = zones.iloc[0].get("lt1_hr")
+    return None if pd.isna(value) else float(value)
+
+
+def easy_pace_from_log(
+    activities: pd.DataFrame, zones: pd.DataFrame, cfg: PlanConfig, today: date
+) -> EasyPaceReference:
+    """Reference easy pace from the activity log, capped at the zones' LT1.
+
+    Parameters
+    ----------
+    activities : pandas.DataFrame
+        Output of :func:`dashboard.query.fetch_activities`.
+    zones : pandas.DataFrame
+        Training zones carrying ``lt1_hr``.
+    cfg : PlanConfig
+        Supplies the window, minimum run count, minimum km and fallback pace.
+    today : datetime.date
+        Last day of the window.
+
+    Returns
+    -------
+    EasyPaceReference
+        The pace and how it was obtained.
+    """
+    return reference_easy_pace(
+        activity_metrics.prepare_runs(activities),
+        today=today,
+        window_days=cfg.easy_reference_window_days,
+        hr_cap=_lt1_hr(zones),
+        min_runs=cfg.easy_reference_min_runs,
+        min_km=cfg.easy_reference_min_km,
+        fallback_s_per_km=cfg.easy_reference_fallback_s_per_km,
+    )
+
+
 def gather(cfg: PlanConfig = DEFAULT_CONFIG) -> BlockContext:
-    """Compute the block context and pull the measured zones.
+    """Compute the block context, pull the measured zones and the reference easy pace.
 
     Parameters
     ----------
@@ -163,11 +209,39 @@ def gather(cfg: PlanConfig = DEFAULT_CONFIG) -> BlockContext:
     Returns
     -------
     BlockContext
-        Per-week periodization plus the lactate-anchored zones.
+        Per-week periodization, the lactate-anchored zones and the reference
+        easy pace.
     """
     supabase = query.get_supabase_client()
     zones = query.fetch_training_zones(supabase)
-    return BlockContext(cfg=cfg, weeks=compute_block(cfg), zones=zones)
+    activities = query.fetch_activities(supabase)
+    easy_pace = easy_pace_from_log(activities, zones, cfg, date.today())
+    return BlockContext(cfg=cfg, weeks=compute_block(cfg), zones=zones, easy_pace=easy_pace)
+
+
+def _format_easy_pace(ref: EasyPaceReference | None, hr_cap: float | None) -> str:
+    """Render the reference easy pace and its km-to-minutes table."""
+    if ref is None:
+        return ""
+    if ref.from_data:
+        source = (
+            f"median of {ref.n_runs} outdoor easy runs (>=5 km, avg HR at or under LT1) "
+            f"in the last {ref.window_days} days"
+        )
+    else:
+        source = (
+            f"configured fallback: too few qualifying outdoor easy runs in the last "
+            f"{ref.window_days} days"
+        )
+    table = ", ".join(f"{km} km = {easy_minutes(km, ref.pace_s_per_km)} min" for km in range(6, 19))
+    cap = f"{int(hr_cap)}" if hr_cap is not None else "the LT1 ceiling"
+    return (
+        f"\nEASY RUNS ARE PRESCRIBED BY TIME. Reference easy pace "
+        f"{seconds_to_pace(ref.pace_s_per_km)}/km ({source}).\n"
+        f"  Plan the week in km as before, then convert each easy run with minutes = km x reference "
+        f"pace, rounded UP to 5 min:\n  {table}.\n"
+        f"  HR <={cap} governs the run; the km at the reference pace is a guide, not a goal."
+    )
 
 
 def _format_zones(zones: pd.DataFrame) -> str:
@@ -320,7 +394,7 @@ PERIODIZATION (deterministic — do not override), week by week:
 {week_blocks}
 
 LACTATE-ANCHORED ZONES (shared across the block):
-{_format_zones(bundle.zones)}{lt1_note}
+{_format_zones(bundle.zones)}{lt1_note}{_format_easy_pace(bundle.easy_pace, _lt1_hr(bundle.zones))}
 
 AVAILABILITY & STRUCTURE (every week):
   {cfg.sessions_per_week} sessions/week: ~{cfg.runs_per_week} runs + ~{cfg.strength_per_week} \
@@ -383,9 +457,16 @@ GUARDRAILS (apply to EVERY week of the block):
     fixed-pace work, `hr_max` (and optionally `hr_min`) for HR-capped work: easy steps carry the LT1
     ceiling as `hr_max`. Pace wins when both are given; set `watch_target: "hr"` for a treadmill
     threshold session, where watch pace is unreliable. Give jog recoveries `duration_s`.
+    EASY RUNS END ON TIME: every run step of an easy session (easy runs, the long run, recovery runs
+    and the easy half of a double day) carries `duration_s`, never `distance_m`. Its metric reads in
+    minutes ("55 min easy (PM)") and its target reads "HR <=145 governs; ~9 km at the reference pace
+    is a guide, not a goal". Threshold reps, race pace, sims and quality warm-ups/cooldowns keep
+    their current dose. On the TREADMILL, the target adds: "start the belt at ~5:50/km; if HR is
+    over 140 at minute 10, slow the belt. Cut rule: HR >=5 bpm above your usual at this belt speed
+    means a fatigue day: slow down and keep the minutes, never push the pace to hold it".
     STRIDES happen INSIDE the run, never as their own step at the end: split the easy run (or warm-up)
     into two run steps of the same phase. The first part carries `hr_max` 145 (about the first third:
-    e.g. 2 km of a 6 km run, 10 min of a 15 min warm-up); the second part carries NO `hr_max`, since a
+    e.g. 20 min of a 55 min run, 10 min of a 15 min warm-up); the second part carries NO `hr_max`, since a
     stride lifts HR past the cap and the watch would alert on every one, and its `target` holds the
     stride instruction, e.g. "6x20 s relaxed-fast strides spread evenly, easy jog between (no
     walking); HR <=145 outside the strides". Do not use `repeats` for strides.
@@ -394,7 +475,9 @@ GUARDRAILS (apply to EVERY week of the block):
     Stations and walk rests may omit the dose and end on the lap button. A run step whose length
     depends on earlier steps ("jog to 9 km total") must state its own distance.
   - DETAIL & CONSISTENCY: be explicit and unambiguous. State the exact number of rounds/sets/reps.
-    `distance_m` and `duration_min` MUST equal the sum across the steps.
+    `duration_min` MUST equal the sum across the steps. `distance_m` MUST equal the sum of step
+    distances for distance-based runs; for a time-based easy session it is the PLANNED km (the km the
+    minutes were converted from), so the weekly-km target and planned-vs-done still add up.
   - LOADS: give a concrete weight for every strength/station movement — station work at the Hyrox
     division standard above, barbell lifts by RPE. State reps and rest. Never write a loadless station.
   - Fill `why` for every session (the justification AND the trade-off — why not more), and the

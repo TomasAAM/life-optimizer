@@ -5,9 +5,19 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 
+import pandas as pd
+
 from plan import phase
 from plan.config import DEFAULT_CONFIG, Race
-from plan.context import _format_week_plan, _week_context
+from plan.context import (
+    BlockContext,
+    _format_easy_pace,
+    _format_week_plan,
+    _week_context,
+    easy_pace_from_log,
+    render_brief,
+)
+from plan.pace import EasyPaceReference
 
 _RACE = Race("hyrox", date(2026, 11, 14), note="mixed doubles")
 
@@ -59,3 +69,58 @@ def test_a_race_after_an_a_race_is_a_race_week_with_recovery() -> None:
     assert (week.race_name, week.phase_name) == ("10k", "peak")
     assert week.is_race_week is True
     assert week.is_post_race_recovery is True
+
+
+def _activities(n: int, activity_type: str = "running") -> pd.DataFrame:
+    """n 9 km outdoor runs at 5:45/km and HR 135 in the week before 11-08."""
+    return pd.DataFrame({
+        "start_time_local": pd.to_datetime(["2026-11-03 07:00"] * n),
+        "activity_name": ["Easy"] * n,
+        "activity_type": [activity_type] * n,
+        "distance_m": [9000.0] * n,
+        "duration_s": [3105.0] * n,
+        "moving_duration_s": [3105.0] * n,
+        "avg_hr": [135.0] * n,
+    })
+
+
+_ZONES = pd.DataFrame({"zone_index": [1], "lt1_hr": [145]})
+
+
+def test_easy_pace_from_log_reads_the_lt1_cap_from_the_zones() -> None:
+    ref = easy_pace_from_log(_activities(6), _ZONES, DEFAULT_CONFIG, date(2026, 11, 8))
+
+    assert (ref.pace_s_per_km, ref.n_runs, ref.from_data) == (345, 6, True)
+
+
+def test_easy_pace_from_log_ignores_treadmill_runs() -> None:
+    ref = easy_pace_from_log(
+        _activities(6, "treadmill_running"), _ZONES, DEFAULT_CONFIG, date(2026, 11, 8)
+    )
+
+    assert ref.from_data is False
+
+
+def test_easy_pace_section_states_its_source_and_the_conversion() -> None:
+    text = _format_easy_pace(EasyPaceReference(345, 21, 42, True), 145)
+
+    assert "Reference easy pace 5:45/km (median of 21 outdoor easy runs" in text
+    assert "9 km = 55 min" in text
+    assert "18 km = 105 min" in text
+    assert "HR <=145 governs" in text
+
+
+def test_easy_pace_section_flags_the_fallback() -> None:
+    assert "configured fallback" in _format_easy_pace(EasyPaceReference(345, 0, 42, False), 145)
+
+
+def test_brief_carries_the_time_based_easy_rules() -> None:
+    weeks = [_week_context(date(2026, 11, 16), DEFAULT_CONFIG)]
+    bundle = BlockContext(cfg=DEFAULT_CONFIG, weeks=weeks, zones=pd.DataFrame(),
+                          easy_pace=EasyPaceReference(345, 21, 42, True))
+
+    brief = render_brief(bundle)
+
+    assert "EASY RUNS ARE PRESCRIBED BY TIME" in brief
+    assert "EASY RUNS END ON TIME" in brief
+    assert "Cut rule: HR >=5 bpm above your usual" in brief

@@ -97,6 +97,18 @@ class PlanConfig:
     phase_without_race : str
         The phase for weeks with no race left on the calendar: ``"base"`` holds
         base volume until a new race is added, ``"off"`` cuts to maintenance.
+    easy_reference_window_days : int
+        How far back the reference easy pace looks. Easy runs are prescribed in
+        minutes, converted from the planned km at this pace, so the window sets
+        how quickly the conversion follows a change in easy pace.
+    easy_reference_min_runs : int
+        Fewest qualifying runs the reference pace needs. With fewer, the brief
+        uses ``easy_reference_fallback_s_per_km`` and says so.
+    easy_reference_min_km : float
+        Shortest run that counts toward the reference pace, so race warm-ups and
+        short shakeouts do not set it.
+    easy_reference_fallback_s_per_km : int
+        Easy pace used when too few qualifying runs exist, in seconds per km.
     """
 
     races: tuple[Race, ...]
@@ -115,6 +127,14 @@ class PlanConfig:
     base_weekly_km: float
     peak_weeks: int = 3
     phase_without_race: str = "base"
+    # Six weeks spans a full block plus its run-in, long enough for ~20 outdoor easy
+    # runs, short enough to follow a fitness change within one block.
+    easy_reference_window_days: int = 42
+    easy_reference_min_runs: int = 6
+    easy_reference_min_km: float = 5.0
+    # 5:45/km: the median outdoor easy pace (avg HR <=145, >=5 km) from 2026-09-28
+    # to 2026-11-07. Only used when the log has too few qualifying runs.
+    easy_reference_fallback_s_per_km: int = 345
 
 
 # The eight Hyrox stations, in race order, the generator draws functional work from.
