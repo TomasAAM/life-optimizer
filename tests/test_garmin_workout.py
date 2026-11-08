@@ -263,6 +263,33 @@ def test_double_day_with_a_timed_run_step_keeps_the_first_label() -> None:
     assert build_workout(session, _DATE)["workoutName"] == "LOD 10-20 Run: 20 min easy (PM)"
 
 
+def test_time_based_strides_split_is_named_for_its_total_minutes() -> None:
+    """A time-based easy run split for strides is named for its whole duration."""
+    session = _session([
+        {"phase": "main", "kind": "strength", "metric": "Weighted pull-up 5x3", "load": "+17.5 kg"},
+        {"kind": "run", "metric": "20 min easy (PM)", "duration_s": 1200, "hr_max": 145},
+        {"kind": "run", "metric": "35 min easy (PM) + 6x20 s strides", "duration_s": 2100},
+    ], session_type="run", title="Upper Strength (AM) + Easy Run (PM)",
+       prescription="AM: weighted pull-up 5x3. PM: 55 min easy with strides.")
+
+    assert build_workout(session, _DATE)["workoutName"] == "LOD 10-20 Run: 55 min easy (PM)"
+
+
+def test_time_based_easy_step_ends_on_time_with_the_hr_ceiling() -> None:
+    """A time-based easy step reaches the watch as a time end with the HR alert kept."""
+    session = _session([
+        {"kind": "run", "metric": "55 min easy", "duration_s": 3300, "hr_max": 145,
+         "target": "HR <=145 governs; ~9 km at the reference pace is a guide, not a goal"},
+    ], title="Easy Run", distance_m=9000, duration_min=55)
+
+    step = _steps_of(build_workout(session, _DATE))[0]
+
+    assert step["endCondition"]["conditionTypeKey"] == "time"
+    assert step["endConditionValue"] == 3300.0
+    assert step["targetType"]["workoutTargetTypeKey"] == "heart.rate.zone"
+    assert step["targetValueTwo"] == 145
+
+
 def test_sim_keeps_its_title_and_prescription() -> None:
     """Stations between runs are part of the watch workout, so nothing is hidden."""
     session = _session([

@@ -39,6 +39,8 @@ _HASH_MARKER = re.compile(r"\[lod:([0-9a-f]{12})\]")
 
 # The distance a run step's metric opens with, e.g. "3 km" in "3 km easy (PM)".
 _LEADING_KM = re.compile(r"^\d+(?:\.\d+)?\s*km\b")
+# The duration a time-based run step's metric opens with, e.g. "20 min" in "20 min easy (PM)".
+_LEADING_MIN = re.compile(r"^\d+(?:\.\d+)?\s*min\b")
 
 _RUNNING = {"sportTypeId": 1, "sportTypeKey": "running", "displayOrder": 1}
 
@@ -177,18 +179,27 @@ def session_workout_name(session: PlannedSession, session_date: date) -> str:
 
 
 def _run_label(session: PlannedSession) -> str:
-    """Label a double day's run, with its total distance when every step gives one.
+    """Label a double day's run with its total, when every step ends the same way.
 
-    A time-based step has no distance to add, so any such step keeps the first
-    run step's label unchanged.
+    All distance steps sum to km ("9 km easy (PM)"); all time steps sum to
+    minutes ("55 min easy (PM)"), since time-based easy runs are split for
+    strides just as distance ones were. A mix of the two has no single total,
+    so it keeps the first run step's label unchanged.
     """
     runs = [step for step in session.steps if step.kind == "run"]
     first = runs[0].metric
-    if len(runs) == 1 or any(step.distance_m is None for step in runs):
+    if len(runs) == 1:
         return first
-    total = f"{sum(step.distance_m for step in runs) / 1000:g} km"
-    if _LEADING_KM.match(first):
-        return _LEADING_KM.sub(total, first, count=1)
+    if all(step.distance_m is not None for step in runs):
+        total = f"{sum(step.distance_m for step in runs) / 1000:g} km"
+        pattern = _LEADING_KM
+    elif all(step.duration_s is not None for step in runs):
+        total = f"{sum(step.duration_s for step in runs) / 60:g} min"
+        pattern = _LEADING_MIN
+    else:
+        return first
+    if pattern.match(first):
+        return pattern.sub(total, first, count=1)
     return total
 
 
