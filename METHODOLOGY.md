@@ -100,6 +100,25 @@ days before it.
 - *Trade-off:* slower easy days now cost km. Planned-vs-done still scores the run on km (done at
   >=85% of plan, i.e. an average up to ~6:46/km at a 5:45 reference), so a volume loss stays visible.
 
+### 10. Warm-up ramps that only add plates (2026-11-09)
+The plan prescribes the working weight; `plan/warmup.py` derives the warm-up sets in front of it.
+Reps fall as the load rises (8-10, 5, 3, 1-2) so the warm-up builds no fatigue, and the last set
+lands at ~85-90% of the working weight. The plates are stacked heaviest first and every warm-up load
+is a prefix of that stack, so between sets the athlete only adds plates. Rest ~60 s after the light
+sets and ~2 min before the first working set. The warm-up sets double as technique practice: one cue
+per set, and a side-on video of a top set every two weeks. The trigger was the athlete's occasional
+back pain when form slips, and logs with big jumps (overhead press from the empty bar straight to 60
+kg on 2026-11-09).
+- **Moderate (systematic review, mixed results)** — across 11 studies, a specific warm-up helped more
+  than a general one, and loads close to the training load helped maximal strength and reps to
+  failure (Ribeiro et al. 2021). Outcomes were strength and reps, not technique or injury.
+  https://revistas.rcaap.pt/motricidade/article/view/21143
+- **Single study** — before squats, a warm-up reaching 80% of the training load beat a few light
+  reps on force output. https://pmc.ncbi.nlm.nih.gov/articles/PMC7558980 One crossover study found
+  no warm-up effect at all on sets to failure at 80% 1RM (Ribeiro 2014), so the effect is small.
+- **Convention** — falling reps, plate-only steps, and using warm-up sets for technique practice.
+- *Trade-off:* a full ramp adds ~6-8 min to the first lift, which the 45-60 min session absorbs.
+
 ## How the generator uses this
 The weekly generator references these **principles** (never inventing citations) to produce a
 per-session `why` (justification + the trade-off) and a week-level `methodology` note. The sources
