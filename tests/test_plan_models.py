@@ -101,3 +101,42 @@ def test_step_accepts_a_complete_threshold_rep() -> None:
 
     assert rep.pace_fast_s_per_km == 248
     assert legacy.duration_s is None and legacy.distance_m is None
+
+
+@pytest.mark.parametrize(
+    ("fields", "message"),
+    [
+        ({"working_weight": 115}, "both working_weight and implement"),
+        ({"implement": "barbell"}, "both working_weight and implement"),
+        ({"ramp": "full"}, "ramp requires working_weight"),
+        ({"working_weight": 139, "implement": "barbell"}, "cannot be loaded"),
+        ({"working_weight": 36, "implement": "dumbbell"}, "cannot be loaded"),
+    ],
+)
+def test_step_rejects_bad_working_weights(fields: dict, message: str) -> None:
+    """A working weight must be complete and buildable from the gym's plates."""
+    with pytest.raises(ValidationError, match=message):
+        Step.model_validate({"kind": "strength", "metric": "Back squat 5x3", **fields})
+
+
+def test_ramp_is_only_for_strength_steps() -> None:
+    with pytest.raises(ValidationError, match="only for strength steps"):
+        Step.model_validate({
+            "kind": "station", "metric": "Sled push", "working_weight": 115,
+            "implement": "barbell", "ramp": "full",
+        })
+
+
+def test_step_accepts_a_ramped_lift_and_old_steps_still_validate() -> None:
+    squat = Step.model_validate({
+        "kind": "strength", "metric": "Back squat 5x3", "load": "115 kg",
+        "working_weight": 115, "implement": "barbell", "ramp": "full",
+    })
+    bench = Step.model_validate({
+        "kind": "strength", "metric": "DB bench 3x8", "load": "2x80 lb",
+        "working_weight": 80, "implement": "dumbbell", "ramp": "short",
+    })
+    legacy = Step.model_validate({"kind": "strength", "metric": "Hip thrust 3x8", "load": "139 kg"})
+
+    assert squat.ramp == "full" and bench.implement == "dumbbell"
+    assert legacy.working_weight is None and legacy.ramp is None

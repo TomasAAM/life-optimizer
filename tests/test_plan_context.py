@@ -144,3 +144,13 @@ def test_treadmill_easy_target_fits_the_watch_step_limit() -> None:
     assert treadmill_line in brief
     step_text = f"20 min easy (PM): {hr_line} {treadmill_line}"
     assert len(step_text) <= _STEP_DESCRIPTION_MAX_CHARS
+
+
+def test_brief_carries_the_warm_up_ramp_rules() -> None:
+    weeks = [_week_context(date(2026, 11, 16), DEFAULT_CONFIG)]
+    brief = render_brief(BlockContext(cfg=DEFAULT_CONFIG, weeks=weeks, zones=pd.DataFrame()))
+
+    assert "WARM-UP RAMPS" in brief
+    assert "lb PER HAND" in brief
+    assert "25, 20, 15, 10, 5, 2.5, 1.25 kg per side" in brief
+    assert "do NOT write warm-up sets as steps" in brief

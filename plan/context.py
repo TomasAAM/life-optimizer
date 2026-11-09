@@ -31,12 +31,17 @@ from plan import phase
 from plan.config import (
     ATHLETE_BODYWEIGHT_KG,
     ATHLETE_LOADS,
+    BARBELL_KG,
     DEFAULT_CONFIG,
+    DUMBBELL_STEP_LB,
+    GYM_PLATES_KG,
     HYROX_DIVISION,
     HYROX_STANDARDS,
     HYROX_STATIONS,
     STRENGTH_LIBRARY,
     STRENGTH_TEMPLATE,
+    TRAP_BAR_KG,
+    WARMUP_RULES,
     PlanConfig,
     Race,
 )
@@ -421,6 +426,15 @@ LOADS ({HYROX_DIVISION}) — prescribe station work AT these competition standar
   Athlete bodyweight: {ATHLETE_BODYWEIGHT_KG:.0f} kg — read the loads below as relative strength.
   Known athlete capacity: {"; ".join(f"{k} {v}" for k, v in ATHLETE_LOADS.items())}.
   STRENGTH STRUCTURE (evidence-based): {STRENGTH_TEMPLATE}
+  WARM-UP RAMPS: every barbell, trap-bar, weighted pull-up/dip and dumbbell strength step carries
+  `working_weight` + `implement` (barbell / trap_bar = total kg incl. the {BARBELL_KG:g} / {TRAP_BAR_KG:g} kg bar;
+  belt = kg ADDED to bodyweight; dumbbell = lb PER HAND, a multiple of {DUMBBELL_STEP_LB:g} lb, since this gym's
+  dumbbells are in pounds: convert the kg capacities above and write the `load` text in lb too). The working
+  weight must be buildable from plates of {", ".join(f"{p:g}" for p in GYM_PLATES_KG)} kg per side, or
+  persist rejects the week. Set `ramp` to "full" on the first heavy lift of a session, "short" on later heavy
+  lifts, "single" on accessories, null for bodyweight-only or station work. The code derives the warm-up
+  sets and the plates to add, so do NOT write warm-up sets as steps. Add to the first lift's `target`: \
+{WARMUP_RULES}
 
 GUARDRAILS (apply to EVERY week of the block):
   - Each week has exactly 7 entries, one per weekday Monday..Sunday (use session_type "rest" for rest days).

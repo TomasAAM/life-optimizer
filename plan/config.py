@@ -211,7 +211,55 @@ STRENGTH_TEMPLATE = (
     "Heavy compound lifts 3-5 sets x 3-5 reps @ RPE 8 (~1-2 RIR, never to failure), "
     "2-3 min full rest, concentric as fast as possible. Judge by load + RIR, NOT HR. "
     "Progress load when a top set leaves >2 reps in reserve. Plyometrics (jumps/hops) "
-    "3-5 x 3-5 with full recovery, ONLY on easy-run days."
+    "3-5 x 3-5 with full recovery, ONLY on easy-run days. Warm-up ramps are computed "
+    "from the working weight (see WARM-UP RAMPS); reps fall as the load rises."
+)
+
+# Gym equipment, confirmed by the athlete on 2026-11-09. Plate sizes are what can
+# go on ONE side of a bar (or on a dip belt). Dumbbells in this gym are in pounds,
+# so dumbbell loads are prescribed and ramped in lb while everything else stays kg.
+GYM_PLATES_KG: tuple[float, ...] = (25.0, 20.0, 15.0, 10.0, 5.0, 2.5, 1.25)
+BARBELL_KG = 20.0
+# Trap bars vary by model (roughly 20-30 kg). 20 kg is the athlete's understanding,
+# not a weighed value; if the sleeve says otherwise, change it here and every
+# trap-bar ramp follows.
+TRAP_BAR_KG = 20.0
+DUMBBELL_STEP_LB = 5.0
+
+
+@dataclass(frozen=True)
+class RampStep:
+    """One warm-up set of a ramp, as a fraction of the working weight.
+
+    Parameters
+    ----------
+    fraction : float
+        Target load as a fraction of the working weight. ``0.0`` means the empty
+        implement: the bare bar, or bodyweight on a dip belt. Dumbbell ramps skip it.
+    reps : str
+        Reps for this set, e.g. ``"5"`` or ``"1-2"``.
+    """
+
+    fraction: float
+    reps: str
+
+
+# Warm-up ramps (2026-11-09). The working weight is fixed by the plan; the ramp is
+# derived from it so the athlete only ever ADDS plates between sets. Reps fall as
+# the load rises so the warm-up does not build fatigue, and the last set lands near
+# the working weight: a specific warm-up close to the training load is what the
+# warm-up literature supports (Ribeiro et al. 2021, systematic review; see
+# METHODOLOGY.md). "full" is for the first heavy lift of a session, "short" for a
+# later heavy lift whose pattern is already warm, "single" for accessories.
+RAMP_SCHEMES: dict[str, tuple[RampStep, ...]] = {
+    "full": (RampStep(0.0, "8-10"), RampStep(0.5, "5"), RampStep(0.7, "3"), RampStep(0.87, "1-2")),
+    "short": (RampStep(0.6, "5"), RampStep(0.85, "2")),
+    "single": (RampStep(0.7, "5"),),
+}
+WARMUP_RULES = (
+    "Rest ~60 s after the light warm-up sets and ~2 min before the first working set. "
+    "Use each warm-up set to rehearse one cue (brace, bar path, depth). Film the last "
+    "warm-up and one working set from the side every two weeks."
 )
 
 

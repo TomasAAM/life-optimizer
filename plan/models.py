@@ -13,6 +13,8 @@ from typing import Literal, Optional, Self
 
 from pydantic import BaseModel, Field, model_validator
 
+from plan.warmup import Implement, RampKind, is_loadable
+
 DayName = Literal[
     "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
 ]
@@ -87,6 +89,24 @@ class Step(BaseModel):
         "range is given, else HR when hr_max is given, else none. Set 'hr' for "
         "treadmill threshold reps, where watch pace is unreliable.",
     )
+    # Machine-readable working weight, read by plan.warmup to derive the warm-up
+    # ramp the card shows. ``load`` stays the human-facing text.
+    working_weight: Optional[float] = Field(
+        default=None, gt=0,
+        description="Working weight of a strength step: total kg on a barbell or trap "
+        "bar, kg added on a dip belt, lb per dumbbell. Requires implement.",
+    )
+    implement: Optional[Implement] = Field(
+        default=None,
+        description="What working_weight loads: barbell, trap_bar, belt (kg) or "
+        "dumbbell (lb). Requires working_weight.",
+    )
+    ramp: Optional[RampKind] = Field(
+        default=None,
+        description="Warm-up ramp derived from working_weight: full (first heavy lift "
+        "of the session), short (a later heavy lift), single (an accessory). Null for "
+        "no ramp. Requires working_weight and implement.",
+    )
 
     @model_validator(mode="after")
     def check_watch_fields(self) -> Self:
@@ -120,6 +140,36 @@ class Step(BaseModel):
             raise ValueError("watch_target 'pace' requires a pace range.")
         if self.watch_target == "hr" and self.hr_max is None:
             raise ValueError("watch_target 'hr' requires hr_max.")
+        return self
+
+    @model_validator(mode="after")
+    def check_strength_fields(self) -> Self:
+        """Reject a working weight that is half specified or cannot be loaded.
+
+        Returns
+        -------
+        Step
+            The validated step.
+
+        Raises
+        ------
+        ValueError
+            If ``working_weight`` and ``implement`` are not given together, a ramp
+            is requested without them or on a non-strength step, or the gym's
+            plates and dumbbells cannot make the working weight.
+        """
+        if (self.working_weight is None) != (self.implement is None):
+            raise ValueError("Give both working_weight and implement, or neither.")
+        if self.ramp is not None and self.working_weight is None:
+            raise ValueError("ramp requires working_weight and implement.")
+        if self.ramp is not None and self.kind != "strength":
+            raise ValueError("ramp is only for strength steps.")
+        if self.working_weight is not None and not is_loadable(self.working_weight, self.implement):
+            unit = "lb" if self.implement == "dumbbell" else "kg"
+            raise ValueError(
+                f"working_weight {self.working_weight:g} {unit} cannot be loaded on a "
+                f"{self.implement} with this gym's plates and dumbbells."
+            )
         return self
 
 
