@@ -430,9 +430,12 @@ GUARDRAILS (apply to EVERY week of the block):
     that transfers to both HYROX and {cfg.secondary_goal} running.
   - Use the full gym: at least one strength session per week includes heavy compound or explosive
     lifts (squat, trap-bar deadlift, hip thrust, jumps) for running economy and sled power.
-  - Put the lower-body explosive primer and full lower-strength session on Wednesday morning, about
-    24 h after Tuesday threshold. Alternate squat and hinge emphasis; use 5-6 movements over 45-60 min.
-    Follow with an easy run later Wednesday. Tuesday is threshold ONLY; never add a gym session.
+  - Put the lower-body explosive primer and full lower-strength session on Tuesday morning. Alternate
+    squat and hinge emphasis; use 5-6 movements over 45-60 min. Follow with an easy run later Tuesday.
+    Wednesday is threshold ONLY, about 24 h after the lower session; never add a gym session. The
+    athlete chose this order (2026-11-09) and his threshold HR showed no cost from it. Wednesday
+    threshold carries this cut rule: "If rep 1 won't settle at <=178 bpm (heavy legs from Tuesday),
+    stop after rep 2."
   - Hit the weekly-km target; easy runs carry the km (strength/stations don't count toward km). Judge
     strength by load + RIR, not HR, and prescribe concrete kg from the loads above.
   - Double sessions are welcome, but a double day = exactly one GYM session + one NO-GYM session (run or
