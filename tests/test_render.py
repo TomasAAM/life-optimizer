@@ -228,3 +228,28 @@ def test_source_health_emphasizes_degraded_optional_feed() -> None:
     assert "source-health-warn" in html
     assert "Source attention required" in html
     assert "degraded" in html
+
+
+def _strength_presc(**step_fields: object) -> dict:
+    """A one-step strength prescription for the card renderer."""
+    return {"steps": [{"phase": "main", "kind": "strength", "metric": "Back squat 5x3",
+                       "load": "115 kg", **step_fields}]}
+
+
+def test_ramped_lift_shows_its_ramp_and_plates() -> None:
+    from dashboard.render import _session_steps_html
+
+    html = _session_steps_html(_strength_presc(working_weight=115, implement="barbell", ramp="full"))
+
+    assert "Ramp-up: 20×8-10 · 60×5 · 80×3 · 100×1-2 → 115 kg" in html
+    assert "Add per side: bar · +20 · +10 · +10 · then +5 +2.5" in html
+
+
+def test_steps_without_a_ramp_render_as_before() -> None:
+    from dashboard.render import _session_steps_html
+
+    plain = _session_steps_html(_strength_presc())
+    unloadable = _session_steps_html(_strength_presc(working_weight=139, implement="barbell", ramp="full"))
+
+    assert "seg-ramp" not in plain
+    assert unloadable == plain

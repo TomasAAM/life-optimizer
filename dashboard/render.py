@@ -19,6 +19,7 @@ from plotly.subplots import make_subplots
 from dashboard import recap_tab, styles, theme, zones
 from dashboard.metrics import CTL_WARMUP_DAYS, ReadinessSnapshot
 from plan.pace import seconds_to_pace
+from plan.warmup import build_ramp, format_ramp
 
 _COLOR_CTL = theme.COLOR_CTL     # blue   - fitness
 _COLOR_ATL = theme.COLOR_ATL     # orange - fatigue
@@ -502,6 +503,36 @@ def _zones_table(zones: pd.DataFrame) -> str:
     return f"<table class='weekly'>{header}{''.join(rows)}</table>"
 
 
+def _ramp_html(step: dict) -> str:
+    """Render the warm-up ramp lines for a strength step that requests one.
+
+    The ramp is derived at render time from the stored working weight, so it always
+    matches the current plate and bar configuration. Steps stored before ramps
+    existed carry none of the fields and render nothing. A stored working weight
+    that the current equipment can no longer make also renders nothing rather
+    than breaking the page.
+
+    Parameters
+    ----------
+    step : dict
+        One stored step.
+
+    Returns
+    -------
+    str
+        Zero, one or two ``seg-ramp`` lines.
+    """
+    weight, implement, kind = step.get("working_weight"), step.get("implement"), step.get("ramp")
+    if not (weight and implement and kind):
+        return ""
+    try:
+        ramp_line, plate_line = format_ramp(build_ramp(float(weight), implement, kind))
+    except (ValueError, KeyError):
+        return ""
+    lines = [line for line in (ramp_line, plate_line) if line]
+    return "".join(f"<div class='seg-ramp'>{escape(line)}</div>" for line in lines)
+
+
 def _session_steps_html(presc: dict) -> str:
     """Render a session body as Runna-style banded segment rows.
 
@@ -539,6 +570,7 @@ def _session_steps_html(presc: dict) -> str:
         load_html = f" <span class='seg-load'>@ {escape(str(load))}</span>" if load else ""
         target = s.get("target")
         target_html = f"<div class='seg-target'>{escape(str(target))}</div>" if target else ""
+        target_html += _ramp_html(s)
         tag_html = f"<span class='seg-tag' style='color:{tag_color}'>{tag_text}</span>" if tag_text else ""
         out.append(
             f"<div class='seg-row'><span class='seg-num'>{num}</span>"

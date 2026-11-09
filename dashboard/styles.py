@@ -437,6 +437,7 @@ table.zones .muted {{ color: var(--faint); }}
 .seg-metric b {{ font-weight: 600; }}
 .seg-load {{ color: var(--muted); font-weight: 600; }}
 .seg-target {{ font-size: 0.76rem; color: var(--muted); margin-top: 2px; }}
+.seg-ramp {{ font-size: 0.76rem; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }}
 .seg-tag {{
   font-family: {theme.FONT_MONO};
   font-size: 0.62rem;
